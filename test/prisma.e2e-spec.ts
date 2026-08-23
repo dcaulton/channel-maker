@@ -2,9 +2,10 @@ import {
   PostgreSqlContainer,
   StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
-import { INestApplication} from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Wait } from 'testcontainers';
 import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../src/prisma/prisma.service';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { execSync } from 'node:child_process';

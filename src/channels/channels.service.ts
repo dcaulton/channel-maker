@@ -1,7 +1,19 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
+import { Prisma } from '@prisma/client';
+
+function isUniqueConflict(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002'
+  );
+}
 
 @Injectable()
 export class ChannelsService {
@@ -10,9 +22,11 @@ export class ChannelsService {
   async create(dto: CreateChannelDto) {
     try {
       return await this.prisma.channel.create({ data: dto });
-    } catch (error: any) {
-      if (error?.code === 'P2002') {
-        throw new ConflictException(`Channel with slug "${dto.slug}" already exists`);
+    } catch (error: unknown) {
+      if (isUniqueConflict(error)) {
+        throw new ConflictException(
+          `Channel with slug "${dto.slug}" already exists`,
+        );
       }
       throw error;
     }
@@ -50,9 +64,9 @@ export class ChannelsService {
         where: { id },
         data: dto,
       });
-    } catch (error: any) {
-      if (error?.code === 'P2002') {
-        throw new ConflictException(`Slug already in use`);
+    } catch (error: unknown) {
+      if (isUniqueConflict(error)) {
+        throw new ConflictException('Slug already in use');
       }
       throw error;
     }

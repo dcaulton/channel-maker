@@ -1,5 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ChannelsService } from './channels.service';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 describe('ChannelsService', () => {
@@ -37,7 +38,13 @@ describe('ChannelsService', () => {
   });
 
   it('maps unique constraint to ConflictException', async () => {
-    prisma.channel.create.mockRejectedValue({ code: 'P2002' });
+    prisma.channel.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: '7.9.1',
+        meta: { target: ['slug'] },
+      }),
+    );
 
     await expect(
       service.create({ name: 'X', slug: 'classic-movies' }),

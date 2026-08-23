@@ -10,8 +10,8 @@ import { ScheduleSlotsModule } from './schedule-slots/schedule-slots.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    PrismaModule, 
-    ChannelsModule, 
+    PrismaModule,
+    ChannelsModule,
     ScheduleSlotsModule,
   ],
   controllers: [AppController, HealthController],

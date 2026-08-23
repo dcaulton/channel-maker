@@ -10,6 +10,14 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
+type ChannelResponse = {
+  id: string;
+  name: string;
+  slug: string;
+  slots?: unknown[];
+  _count?: { slots: number };
+};
+
 describe('Channels + ScheduleSlots (e2e)', () => {
   let app: INestApplication;
   let container: StartedPostgreSqlContainer;
@@ -58,7 +66,9 @@ describe('Channels + ScheduleSlots (e2e)', () => {
   });
 
   it('CRUD channel and attach a schedule slot', async () => {
-    const createChannel = await request(app.getHttpServer())
+    const createChannel = await request(
+      app.getHttpServer() as Parameters<typeof request>[0],
+    )
       .post('/channels')
       .send({
         name: 'Classic Movies',
@@ -67,10 +77,13 @@ describe('Channels + ScheduleSlots (e2e)', () => {
       })
       .expect(201);
 
-    const channelId = createChannel.body.id;
+    const channel = createChannel.body as ChannelResponse;
+    const channelId = channel.id;
     expect(channelId).toBeDefined();
 
-    const list = await request(app.getHttpServer()).get('/channels').expect(200);
+    const list = await request(app.getHttpServer())
+      .get('/channels')
+      .expect(200);
     expect(list.body[0]._count.slots).toBe(0);
 
     const createSlot = await request(app.getHttpServer())

@@ -16,7 +16,9 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Channel Maker API')
-    .setDescription('Virtual television station engine — channels, schedules, and more')
+    .setDescription(
+      'Virtual television station engine — channels, schedules, and more',
+    )
     .setVersion('0.1.0')
     .addTag('channels')
     .addTag('schedule-slots')
@@ -27,4 +29,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+void bootstrap();
