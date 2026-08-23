@@ -39,11 +39,3 @@ With the server running (`pnpm start:dev`):
 
 - http://localhost:3000 → should still show the original Hello World (or whatever you changed earlier)
 - http://localhost:3000/health → should return the JSON health response
-
-### 4. Commit
-
-Once both are working:
-
-```bash
-git add .
-git commit -m "chore: initial NestJS skeleton with health endpoint and project README"
