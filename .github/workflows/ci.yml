@@ -30,6 +30,9 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm dlx prisma generate
+        env:
+          # Prisma 7 requires this to be set even for generate
+          DATABASE_URL: postgresql://channelmaker:channelmaker@localhost:5432/channelmaker?schema=public
 
       - name: Lint
         run: pnpm lint
