@@ -17,7 +17,6 @@ Early skeleton. Basic NestJS app with health endpoint.
 
 ## Development
 
-```bash
 # Install dependencies
 pnpm install
 
@@ -27,15 +26,25 @@ pnpm start:dev
 App: http://localhost:3000
 Health: http://localhost:3000/health
 
-Tech stack
+## Testing
+
+Integration tests use [Testcontainers](https://testcontainers.com/) to spin up a real Postgres instance.
+
+### health test:
+- http://localhost:3000/health → should return the JSON health response
+
+On this Fedora host the Testcontainers Ryuk helper cannot access the Docker socket (permissions/SELinux). Run e2e tests with:
+
+```bash
+TESTCONTAINERS_RYUK_DISABLED=true pnpm test:e2e
+```
+
+Cleanup still happens via afterAll(). If a test process is killed hard, orphaned containers can be removed with docker container prune.
+
+## Tech stack
 
 NestJS + TypeScript (strict)
 pnpm
 Node.js (managed with fnm)
 
-### 3. Test it
 
-With the server running (`pnpm start:dev`):
-
-- http://localhost:3000 → should still show the original Hello World (or whatever you changed earlier)
-- http://localhost:3000/health → should return the JSON health response
