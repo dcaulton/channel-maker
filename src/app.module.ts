@@ -5,12 +5,14 @@ import { HealthController } from './health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { ChannelsModule } from './channels/channels.module';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleSlotsModule } from './schedule-slots/schedule-slots.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule, 
-    ChannelsModule,
+    ChannelsModule, 
+    ScheduleSlotsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

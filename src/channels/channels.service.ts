@@ -21,13 +21,21 @@ export class ChannelsService {
   findAll() {
     return this.prisma.channel.findMany({
       orderBy: { name: 'asc' },
+      include: {
+        _count: {
+          select: { slots: true },
+        },
+      },
     });
   }
 
   async findOne(id: string) {
     const channel = await this.prisma.channel.findUnique({
       where: { id },
-      include: { slots: { orderBy: { startsAt: 'asc' } } },
+      include: {
+        slots: { orderBy: { startsAt: 'asc' } },
+        _count: { select: { slots: true } },
+      },
     });
     if (!channel) {
       throw new NotFoundException(`Channel ${id} not found`);

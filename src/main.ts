@@ -19,6 +19,7 @@ async function bootstrap() {
     .setDescription('Virtual television station engine — channels, schedules, and more')
     .setVersion('0.1.0')
     .addTag('channels')
+    .addTag('schedule-slots')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

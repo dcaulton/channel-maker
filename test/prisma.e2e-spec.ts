@@ -2,6 +2,7 @@ import {
   PostgreSqlContainer,
   StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
+import { INestApplication} from '@nestjs/common';
 import { Wait } from 'testcontainers';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -12,6 +13,7 @@ describe('Prisma + Postgres (Testcontainers)', () => {
   let container: StartedPostgreSqlContainer;
   let prisma: PrismaClient;
   let pool: Pool;
+  let app: INestApplication;
 
   beforeAll(async () => {
     container = await new PostgreSqlContainer('postgres:16-alpine')
@@ -45,11 +47,13 @@ describe('Prisma + Postgres (Testcontainers)', () => {
 
   afterAll(async () => {
     // 1. Disconnect Prisma first
-    await prisma?.$disconnect().catch(() => undefined);
-
+    if (app) {
+      const prisma = app.get(PrismaService);
+      await prisma.$disconnect().catch(() => undefined);
+      await app.close();
+    }
     // 2. Drain and close the pool
     await pool?.end().catch(() => undefined);
-
     // 3. Then stop the container
     await container?.stop().catch(() => undefined);
   });
