@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
@@ -78,5 +79,37 @@ export class ChannelsService {
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.channel.delete({ where: { id } });
+  }
+
+  async findSchedule(channelId: string, from: Date, to: Date) {
+    await this.findOne(channelId); // throws NotFound if missing
+
+    if (to <= from) {
+      throw new BadRequestException('to must be after from');
+    }
+
+    return this.prisma.scheduleSlot.findMany({
+      where: {
+        channelId,
+        // overlapping window: starts before `to` AND ends after `from`
+        startsAt: { lt: to },
+        endsAt: { gt: from },
+      },
+      orderBy: { startsAt: 'asc' },
+      include: { mediaAsset: true },
+    });
+  }
+
+  async findNow(channelId: string, at: Date = new Date()) {
+    await this.findOne(channelId);
+
+    return this.prisma.scheduleSlot.findFirst({
+      where: {
+        channelId,
+        startsAt: { lte: at },
+        endsAt: { gt: at },
+      },
+      include: { mediaAsset: true },
+    });
   }
 }

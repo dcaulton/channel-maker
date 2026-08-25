@@ -8,6 +8,8 @@ import {
   Param,
   Patch,
   Post,
+  Query,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -63,5 +65,38 @@ export class ChannelsController {
   @ApiNotFoundResponse({ description: 'Channel not found' })
   remove(@Param('id') id: string) {
     return this.channelsService.remove(id);
+  }
+
+  @Get(':id/now')
+  @ApiOperation({ summary: 'Get the slot currently playing on this channel' })
+  @ApiOkResponse({
+    description: 'Current slot, or null if nothing is scheduled',
+  })
+  @ApiNotFoundResponse({ description: 'Channel not found' })
+  findNow(@Param('id') id: string) {
+    return this.channelsService.findNow(id);
+  }
+
+  @Get(':id/schedule')
+  @ApiOperation({ summary: 'List slots overlapping a time window' })
+  @ApiOkResponse({ description: 'Slots in range' })
+  @ApiNotFoundResponse({ description: 'Channel not found' })
+  findSchedule(
+    @Param('id') id: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const fromDate = from ? new Date(from) : new Date();
+    const toDate = to
+      ? new Date(to)
+      : new Date(fromDate.getTime() + 6 * 60 * 60 * 1000); // default: 6 hours
+
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      throw new BadRequestException(
+        'from and to must be valid ISO date strings',
+      );
+    }
+
+    return this.channelsService.findSchedule(id, fromDate, toDate);
   }
 }
