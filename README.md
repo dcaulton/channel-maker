@@ -17,10 +17,13 @@ Early skeleton. Basic NestJS app with health endpoint.
 
 ## Development
 
-# Install dependencies
-pnpm install
+# Install dependencies, set up db, start in dev / locally
 
-# Run in watch mode
+pnpm install
+docker compose up -d postgres
+cp .env.example .env
+pnpm prisma:generate
+pnpm prisma:migrate
 pnpm start:dev
 
 App: http://localhost:3000
@@ -31,6 +34,7 @@ Health: http://localhost:3000/health
 Integration tests use [Testcontainers](https://testcontainers.com/) to spin up a real Postgres instance.
 
 ### health test:
+
 - http://localhost:3000/health → should return the JSON health response
 
 On this Fedora host the Testcontainers Ryuk helper cannot access the Docker socket (permissions/SELinux). Run e2e tests with:
@@ -46,6 +50,3 @@ Cleanup still happens via afterAll(). If a test process is killed hard, orphaned
 NestJS + TypeScript (strict)
 pnpm
 Node.js (managed with fnm)
-
-
-

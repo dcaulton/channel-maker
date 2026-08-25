@@ -19,15 +19,40 @@ model Channel {
 
 model ScheduleSlot {
   id          String   @id @default(cuid())
+  
   channelId   String
   channel     Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  mediaAssetId  String?
+  mediaAsset    MediaAsset? @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull)
+
   startsAt    DateTime
   endsAt      DateTime
   title       String
   description String?
-  // We'll expand this later (media item, live source, rules, etc.)
+ 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([channelId, startsAt])
+  @@index([mediaAssetId])
+}
+
+model MediaAsset {
+  id          String   @id @default(cuid())
+  title       String
+  /// Path or URL the player/proxy will eventually use
+  sourceUrl   String
+  /// file | http-live | hls  (keep free-form string for now)
+  sourceType  String   @default("file")
+  durationSec Int?
+  description String?
+
+  needsVpn    Boolean  @default(false)
+  vpnCountry  String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  slots       ScheduleSlot[]
 }

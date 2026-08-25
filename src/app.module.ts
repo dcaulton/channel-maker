@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ChannelsModule } from './channels/channels.module';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleSlotsModule } from './schedule-slots/schedule-slots.module';
+import { MediaAssetsModule } from './media-assets/media-assets.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { ScheduleSlotsModule } from './schedule-slots/schedule-slots.module';
     PrismaModule,
     ChannelsModule,
     ScheduleSlotsModule,
+    MediaAssetsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

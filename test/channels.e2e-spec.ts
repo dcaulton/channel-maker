@@ -36,9 +36,13 @@ describe('Channels + ScheduleSlots (e2e)', () => {
     const connectionString = container.getConnectionUri();
     process.env.DATABASE_URL = connectionString;
 
-    execSync('pnpm dlx prisma migrate deploy', {
+    execSync('pnpm exec prisma migrate deploy', {
       stdio: 'inherit',
-      env: { ...process.env, DATABASE_URL: connectionString },
+      env: {
+        ...process.env,
+        DATABASE_URL: connectionString,
+        CI: 'true', // skip interactive / agent-style hooks when possible
+      },
     });
 
     const moduleRef = await Test.createTestingModule({
@@ -113,6 +117,49 @@ describe('Channels + ScheduleSlots (e2e)', () => {
     await request(app.getHttpServer())
       .delete(`/channels/${channelId}`)
       .expect(204);
+  });
+
+  it('links a media asset to a schedule slot', async () => {
+    const server = app.getHttpServer();
+
+    const channelRes = await request(server)
+      .post('/channels')
+      .send({ name: 'Media Test', slug: 'media-test' })
+      .expect(201);
+    const channelId = channelRes.body.id as string;
+
+    const assetRes = await request(server)
+      .post('/media-assets')
+      .send({
+        title: 'Noir Feature',
+        sourceUrl: 'https://nas.local/films/noir1.mkv',
+        sourceType: 'file',
+        durationSec: 7200,
+      })
+      .expect(201);
+    const mediaAssetId = assetRes.body.id as string;
+
+    const slotRes = await request(server)
+      .post('/schedule-slots')
+      .send({
+        channelId,
+        mediaAssetId,
+        title: 'Night Owl Cinema',
+        startsAt: '2026-08-25T23:00:00.000Z',
+        endsAt: '2026-08-26T01:00:00.000Z',
+      })
+      .expect(201);
+
+    expect(slotRes.body.mediaAssetId).toBe(mediaAssetId);
+    expect(slotRes.body.mediaAsset).toBeDefined();
+    expect(slotRes.body.mediaAsset.id).toBe(mediaAssetId);
+
+    const channelDetail = await request(server)
+      .get(`/channels/${channelId}`)
+      .expect(200);
+
+    expect(channelDetail.body.slots[0].mediaAssetId).toBe(mediaAssetId);
+    expect(channelDetail.body.slots[0].mediaAsset.title).toBe('Noir Feature');
   });
 
   it('rejects invalid schedule range', async () => {

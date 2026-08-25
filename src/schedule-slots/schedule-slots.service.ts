@@ -32,10 +32,15 @@ export class ScheduleSlotsService {
     return this.prisma.scheduleSlot.create({
       data: {
         channelId: dto.channelId,
+        mediaAssetId: dto.mediaAssetId,
         title: dto.title,
         description: dto.description,
         startsAt,
         endsAt,
+      },
+      include: {
+        channel: { select: { id: true, name: true, slug: true } },
+        mediaAsset: true,
       },
     });
   }
@@ -45,6 +50,7 @@ export class ScheduleSlotsService {
       orderBy: { startsAt: 'asc' },
       include: {
         channel: { select: { id: true, name: true, slug: true } },
+        mediaAsset: true,
       },
     });
   }

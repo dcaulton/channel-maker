@@ -30,9 +30,13 @@ describe('Prisma + Postgres (Testcontainers)', () => {
     const connectionString = container.getConnectionUri();
     process.env.DATABASE_URL = connectionString;
 
-    execSync('pnpm dlx prisma migrate deploy', {
+    execSync('pnpm exec prisma migrate deploy', {
       stdio: 'inherit',
-      env: { ...process.env, DATABASE_URL: connectionString },
+      env: {
+        ...process.env,
+        DATABASE_URL: connectionString,
+        CI: 'true', // skip interactive / agent-style hooks when possible
+      },
     });
 
     pool = new Pool({ connectionString });

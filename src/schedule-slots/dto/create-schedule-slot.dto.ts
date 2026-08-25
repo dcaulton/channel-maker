@@ -6,6 +6,14 @@ export class CreateScheduleSlotDto {
   @IsString()
   channelId: string;
 
+  @ApiPropertyOptional({
+    example: 'clxxxxxxxxxxxxxxxx',
+    description: 'Optional media asset to play in this slot',
+  })
+  @IsOptional()
+  @IsString()
+  mediaAssetId?: string;
+
   @ApiProperty({ example: 'Night Owl Cinema' })
   @IsString()
   @MinLength(1)

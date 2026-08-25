@@ -24,3 +24,10 @@ lerna-debug.log*
 .tmp
 
 /generated/prisma
+
+# prisma skills stuff
+.agent/
+.agents/
+.claude/skills/
+.cursor/skills/
+skills-lock.json

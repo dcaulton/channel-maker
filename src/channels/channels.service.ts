@@ -47,7 +47,10 @@ export class ChannelsService {
     const channel = await this.prisma.channel.findUnique({
       where: { id },
       include: {
-        slots: { orderBy: { startsAt: 'asc' } },
+        slots: {
+          orderBy: { startsAt: 'asc' },
+          include: { mediaAsset: true },
+        },
         _count: { select: { slots: true } },
       },
     });
