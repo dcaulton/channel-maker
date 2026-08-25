@@ -9,6 +9,9 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    env:
+      # Prisma 7 requires this even for generate (postinstall / explicit generate)
+      DATABASE_URL: postgresql://channelmaker:channelmaker@localhost:5432/channelmaker?schema=public
 
     steps:
       - name: Checkout
@@ -27,12 +30,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma client
-        run: pnpm dlx prisma generate
-        env:
-          # Prisma 7 requires this to be set even for generate
-          DATABASE_URL: postgresql://channelmaker:channelmaker@localhost:5432/channelmaker?schema=public
 
       - name: Lint
         run: pnpm lint
