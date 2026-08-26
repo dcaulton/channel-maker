@@ -2,6 +2,7 @@ allowBuilds:
   '@prisma/engines': true
   '@scarf/scarf': true
   cpu-features: true
+  esbuild: true
   prisma: true
   protobufjs: true
   ssh2: true

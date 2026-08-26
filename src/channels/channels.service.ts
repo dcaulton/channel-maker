@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
 import { Prisma } from '@prisma/client';
+import { buildM3u } from './playlist.util';
 
 function isUniqueConflict(error: unknown): boolean {
   return (
@@ -111,5 +112,22 @@ export class ChannelsService {
       },
       include: { mediaAsset: true },
     });
+  }
+
+  async getPlaylistM3u(
+    channelId: string,
+    from: Date,
+    to: Date,
+    vpnProxyBaseUrl?: string,
+  ): Promise<{ body: string; channelName: string }> {
+    const channel = await this.findOne(channelId);
+    const slots = await this.findSchedule(channelId, from, to);
+
+    const body = buildM3u(slots, {
+      channelName: channel.name,
+      vpnProxyBaseUrl,
+    });
+
+    return { body, channelName: channel.name };
   }
 }

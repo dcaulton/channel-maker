@@ -3,12 +3,14 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
   Query,
+  Res,
   BadRequestException,
 } from '@nestjs/common';
 import {
@@ -19,6 +21,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { ChannelsService } from './channels.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
@@ -26,7 +30,10 @@ import { UpdateChannelDto } from './dto/update-channel.dto';
 @ApiTags('channels')
 @Controller('channels')
 export class ChannelsController {
-  constructor(private readonly channelsService: ChannelsService) {}
+  constructor(
+    private readonly channelsService: ChannelsService,
+    private readonly config: ConfigService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a channel' })
@@ -98,5 +105,42 @@ export class ChannelsController {
     }
 
     return this.channelsService.findSchedule(id, fromDate, toDate);
+  }
+
+  @Get(':id/playlist.m3u')
+  @ApiOperation({
+    summary: 'M3U playlist for a schedule window (default next 6 hours)',
+  })
+  @Header('Content-Type', 'application/vnd.apple.mpegurl')
+  async playlist(
+    @Param('id') id: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Res() res?: Response,
+  ) {
+    const fromDate = from ? new Date(from) : new Date();
+    const toDate = to
+      ? new Date(to)
+      : new Date(fromDate.getTime() + 6 * 60 * 60 * 1000);
+
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      throw new BadRequestException(
+        'from and to must be valid ISO date strings',
+      );
+    }
+
+    const vpnProxyBaseUrl = this.config.get<string>('VPN_PROXY_BASE_URL');
+    const { body, channelName } = await this.channelsService.getPlaylistM3u(
+      id,
+      fromDate,
+      toDate,
+      vpnProxyBaseUrl,
+    );
+
+    res!.setHeader(
+      'Content-Disposition',
+      `inline; filename="${channelName.replace(/[^a-z0-9-_]+/gi, '_')}.m3u"`,
+    );
+    res!.send(body);
   }
 }
