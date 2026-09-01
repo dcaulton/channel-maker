@@ -17,7 +17,7 @@ export class CreateMediaAssetDto {
 
   @ApiProperty({
     example: 'https://nas.local/media/movies/maltese-falcon.mkv',
-    description: 'File path or HTTP(S) URL',
+    description: 'File path or HTTP(S) URL. Unique — ingest upserts by this.',
   })
   @IsString()
   @MinLength(1)
@@ -49,4 +49,12 @@ export class CreateMediaAssetDto {
   @IsString()
   @MinLength(2)
   vpnCountry?: string;
+
+  @ApiPropertyOptional({
+    example: 'clxxxxxxxxxxxxxxxx',
+    description: 'Optional catalog Work this file belongs to',
+  })
+  @IsOptional()
+  @IsString()
+  workId?: string;
 }

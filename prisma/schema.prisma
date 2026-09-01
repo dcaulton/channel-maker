@@ -38,21 +38,57 @@ model ScheduleSlot {
   @@index([mediaAssetId])
 }
 
+/// Catalog knowledge about a title (movie, episode, etc.).
+/// Distinct from MediaAsset, which is a playable file or stream.
+model Work {
+  id           String   @id @default(cuid())
+  title        String
+
+  /// movie | episode | series | other  (free-form string for now)
+  kind         String   @default("movie")
+
+  year         Int?
+  genre        String?
+  synopsis     String?
+  seriesTitle  String?
+  season       Int?
+  episode      Int?
+
+  /// Future TMDB / IMDb / TVDB ids, NFO leftovers, etc.
+  externalIds  Json?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assets       MediaAsset[]
+
+  @@index([title, year])
+}
+
 model MediaAsset {
   id          String   @id @default(cuid())
   title       String
+  
   /// Path or URL the player/proxy will eventually use
-  sourceUrl   String
+  /// Unique so NAS ingest can upsert idempotently by path.
+  sourceUrl   String  @unique
+
   /// file | http-live | hls  (keep free-form string for now)
   sourceType  String   @default("file")
+
   durationSec Int?
   description String?
 
   needsVpn    Boolean  @default(false)
   vpnCountry  String?
 
+  workId      String?
+  work        Work?    @relation(fields: [workId], references: [id], onDelete: SetNull)
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   slots       ScheduleSlot[]
+
+  @@index([workId])
 }

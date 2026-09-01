@@ -19,12 +19,14 @@ Early skeleton. Basic NestJS app with health endpoint.
 
 # Install dependencies, set up db, start in dev / locally
 
+```
+cp .env.example .env
 pnpm install
 docker compose up -d postgres
-cp .env.example .env
 pnpm prisma:generate
 pnpm prisma:migrate
 pnpm start:dev
+```
 
 App: http://localhost:3000
 Health: http://localhost:3000/health

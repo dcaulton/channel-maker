@@ -40,7 +40,7 @@ export class ScheduleSlotsService {
       },
       include: {
         channel: { select: { id: true, name: true, slug: true } },
-        mediaAsset: true,
+        mediaAsset: { include: { work: true } },
       },
     });
   }
@@ -50,7 +50,7 @@ export class ScheduleSlotsService {
       orderBy: { startsAt: 'asc' },
       include: {
         channel: { select: { id: true, name: true, slug: true } },
-        mediaAsset: true,
+        mediaAsset: { include: { work: true } },
       },
     });
   }

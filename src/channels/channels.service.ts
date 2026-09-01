@@ -51,7 +51,7 @@ export class ChannelsService {
       include: {
         slots: {
           orderBy: { startsAt: 'asc' },
-          include: { mediaAsset: true },
+          include: { mediaAsset: { include: { work: true } } },
         },
         _count: { select: { slots: true } },
       },
@@ -97,7 +97,7 @@ export class ChannelsService {
         endsAt: { gt: from },
       },
       orderBy: { startsAt: 'asc' },
-      include: { mediaAsset: true },
+      include: { mediaAsset: { include: { work: true } } },
     });
   }
 
@@ -110,7 +110,7 @@ export class ChannelsService {
         startsAt: { lte: at },
         endsAt: { gt: at },
       },
-      include: { mediaAsset: true },
+      include: { mediaAsset: { include: { work: true } } },
     });
   }
 

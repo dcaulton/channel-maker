@@ -23,6 +23,7 @@ async function bootstrap() {
     .addTag('channels')
     .addTag('schedule-slots')
     .addTag('media-assets')
+    .addTag('works')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

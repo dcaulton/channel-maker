@@ -146,7 +146,7 @@ describe('ChannelsService', () => {
           endsAt: { gt: from },
         },
         orderBy: { startsAt: 'asc' },
-        include: { mediaAsset: true },
+        include: { mediaAsset: { include: { work: true } } },
       });
     });
 
@@ -175,7 +175,7 @@ describe('ChannelsService', () => {
           startsAt: { lte: at },
           endsAt: { gt: at },
         },
-        include: { mediaAsset: true },
+        include: { mediaAsset: { include: { work: true } } },
       });
     });
 

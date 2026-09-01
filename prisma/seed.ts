@@ -18,22 +18,34 @@ async function main() {
     },
   });
 
-  let asset = await prisma.mediaAsset.findFirst({
-    where: {
-      title: 'Night Owl Feature',
-      sourceUrl: 'https://nas.local/films/noir1.mkv',
-    },
+  let work = await prisma.work.findFirst({
+    where: { title: 'The Maltese Falcon', year: 1941 },
   });
-  if (!asset) {
-    asset = await prisma.mediaAsset.create({
+  if (!work) {
+    work = await prisma.work.create({
       data: {
-        title: 'Night Owl Feature',
-        sourceUrl: 'https://nas.local/films/noir1.mkv',
-        sourceType: 'file',
-        durationSec: 7200,
+        title: 'The Maltese Falcon',
+        kind: 'movie',
+        year: 1941,
+        genre: 'film-noir',
+        synopsis:
+          'A San Francisco private eye takes on a case that is not what it seems.',
       },
     });
   }
+
+  const sourceUrl = 'https://nas.local/films/noir1.mkv';
+  const asset = await prisma.mediaAsset.upsert({
+    where: { sourceUrl },
+    update: { workId: work.id },
+    create: {
+      title: 'Night Owl Feature',
+      sourceUrl,
+      sourceType: 'file',
+      durationSec: 7200,
+      workId: work.id,
+    },
+  });
 
   // Idempotent-ish: delete prior seed slots on this channel, recreate one window
   await prisma.scheduleSlot.deleteMany({
@@ -58,6 +70,7 @@ async function main() {
   console.log('Seed complete:', {
     channelId: channel.id,
     mediaAssetId: asset.id,
+    workId: work.id,
     playlist: `http://localhost:3000/channels/${channel.id}/playlist.m3u`,
   });
 
