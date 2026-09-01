@@ -4,6 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { SchedulerService } from '../src/scheduler/scheduler.service';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { zonedLocalToUtc } from 'src/scheduler/zoned-time';
 
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -70,6 +71,7 @@ async function main() {
   });
 
   await addTvStreamRules(prisma);
+  await addDaypartLab(prisma);
 
   console.log('Seed complete:', {
     channelId: channel.id,
@@ -206,6 +208,180 @@ async function addTvStreamRules(prisma: PrismaClient) {
     channelSlug: 'broadcast-rotation',
     from: new Date(),
     to: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+}
+
+async function addDaypartLab(prisma: PrismaClient) {
+  const channel = await prisma.channel.upsert({
+    where: { slug: 'daypart-lab' },
+    update: {},
+    create: {
+      name: 'Daypart Lab',
+      slug: 'daypart-lab',
+      description: 'WLS overnight, SHOWA/B/C dayparts, evening slate',
+    },
+  });
+
+  const seasons = [8, 10, 14];
+  for (const series of ['SHOWA', 'SHOWB', 'SHOWC'] as const) {
+    let seriesWork = await prisma.work.findFirst({
+      where: { title: series, kind: 'series' },
+    });
+    if (!seriesWork) {
+      seriesWork = await prisma.work.create({
+        data: { title: series, kind: 'series' },
+      });
+    }
+    for (let season = 1; season <= seasons.length; season += 1) {
+      for (let episode = 1; episode <= seasons[season - 1]; episode += 1) {
+        const code = `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+        const title = `${series}-${code}`;
+        const sourceUrl = `https://nas.local/tv/${series.toLowerCase()}/${code}.mkv`;
+        let work = await prisma.work.findFirst({
+          where: { title, kind: 'episode' },
+        });
+        if (!work) {
+          work = await prisma.work.create({
+            data: {
+              title,
+              kind: 'episode',
+              seriesTitle: series,
+              season,
+              episode,
+            },
+          });
+        }
+        await prisma.mediaAsset.upsert({
+          where: { sourceUrl },
+          update: { workId: work.id, durationSec: 1800 },
+          create: {
+            title,
+            sourceUrl,
+            sourceType: 'file',
+            durationSec: 1800,
+            workId: work.id,
+          },
+        });
+      }
+    }
+  }
+
+  let slateWork = await prisma.work.findFirst({
+    where: { title: 'No programming', kind: 'slate' },
+  });
+  if (!slateWork) {
+    slateWork = await prisma.work.create({
+      data: { title: 'No programming', kind: 'slate' },
+    });
+  }
+  await prisma.mediaAsset.upsert({
+    where: { sourceUrl: 'https://nas.local/slate/no-programming.mp4' },
+    update: { workId: slateWork.id },
+    create: {
+      title: 'No programming',
+      sourceUrl: 'https://nas.local/slate/no-programming.mp4',
+      sourceType: 'file',
+      durationSec: 1,
+      workId: slateWork.id,
+    },
+  });
+
+  // WLS live work+asset already created by the TVH seed helper.
+
+  const ruleset = await prisma.ruleset.upsert({
+    where: { slug: 'wls-showabc-slate' },
+    update: {},
+    create: {
+      name: 'WLS + SHOWA/B/C + slate',
+      slug: 'wls-showabc-slate',
+      applyMode: 'sequential',
+    },
+  });
+
+  const windowPayload = {
+    timeZone: 'America/Chicago',
+    episodeOrigin: '2026-09-01',
+    items: [
+      {
+        start: '00:00',
+        end: '05:00',
+        days: 'daily',
+        mode: 'live',
+        title: 'WLS',
+      },
+      {
+        start: '05:00',
+        end: '09:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'SHOWA',
+        seriesTitle: 'SHOWA',
+      },
+      {
+        start: '09:00',
+        end: '14:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'SHOWB',
+        seriesTitle: 'SHOWB',
+      },
+      {
+        start: '14:00',
+        end: '19:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'SHOWC',
+        seriesTitle: 'SHOWC',
+      },
+      {
+        start: '19:00',
+        end: '24:00',
+        days: 'daily',
+        mode: 'slate',
+        title: 'No programming',
+      },
+    ],
+  };
+
+  const existing = await prisma.rule.findFirst({
+    where: { rulesetId: ruleset.id, kind: 'windowed-sources' },
+  });
+  if (existing) {
+    await prisma.rule.update({
+      where: { id: existing.id },
+      data: { payload: windowPayload, enabled: true },
+    });
+  } else {
+    await prisma.rule.create({
+      data: {
+        rulesetId: ruleset.id,
+        name: 'Weekday-shaped dayparts',
+        kind: 'windowed-sources',
+        scope: 'local',
+        sortOrder: 0,
+        payload: windowPayload,
+      },
+    });
+  }
+
+  await prisma.channelRuleset.upsert({
+    where: {
+      channelId_rulesetId: { channelId: channel.id, rulesetId: ruleset.id },
+    },
+    update: { isActive: true, priority: 0 },
+    create: {
+      channelId: channel.id,
+      rulesetId: ruleset.id,
+      isActive: true,
+      priority: 0,
+    },
+  });
+
+  const scheduler = new SchedulerService(prisma as unknown as PrismaService);
+  return scheduler.fillChannel({
+    channelSlug: 'daypart-lab',
+    from: zonedLocalToUtc('America/Chicago', 2026, 9, 1, 0, 0),
+    to: zonedLocalToUtc('America/Chicago', 2026, 9, 15, 0, 0),
   });
 }
 

@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { type RotateTvStreamItem } from './rotate-tv-streams';
+import { RotateTvStreamsPlanner } from './planners/rotate-tv-streams.planner';
+import { WindowedSourcesPlanner } from './planners/windowed-sources.planner';
+import { RulePlanner } from './rule-planner';
 import {
-  parseRotateTvStreamsPayload,
-  planRotateTvStreams,
-  type RotateTvStreamItem,
-} from './rotate-tv-streams';
+  assertNoOverlaps,
+  type PlannedEngineSlot,
+  type RulePlanner,
+} from './rule-planner';
 
 export type FillOptions = {
   channelSlug: string;
@@ -16,56 +20,36 @@ export type FillOptions = {
 
 @Injectable()
 export class SchedulerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    this.planners = new Map<string, RulePlanner>([
+      ['rotate-tv-streams', new RotateTvStreamsPlanner()],
+      ['windowed-sources', new WindowedSourcesPlanner()],
+    ]);
+  }
 
   async fillChannel(options: FillOptions) {
-    const channel = await this.prisma.channel.findUnique({
-      where: { slug: options.channelSlug },
-    });
-    if (!channel) {
-      throw new NotFoundException(
-        `Channel slug ${options.channelSlug} not found`,
-      );
-    }
-
-    const binding = await this.prisma.channelRuleset.findFirst({
-      where: { channelId: channel.id, isActive: true },
-      orderBy: { priority: 'asc' },
-      include: {
-        ruleset: {
-          include: {
-            rules: { where: { enabled: true }, orderBy: { sortOrder: 'asc' } },
-          },
-        },
-      },
-    });
-    if (!binding) {
-      throw new NotFoundException(
-        `No active ruleset bound to channel ${options.channelSlug}`,
-      );
-    }
-
+    const channel = await this.requireChannel(options.channelSlug);
+    const binding = await this.requireActiveBinding(channel.id);
     const from = options.from ?? new Date();
     const to = options.to ?? new Date(from.getTime() + 24 * 60 * 60 * 1000);
 
-    const rotateRule = binding.ruleset.rules.find(
-      (rule) => rule.kind === 'rotate-tv-streams',
-    );
-    if (!rotateRule) {
-      throw new Error(
-        `Ruleset ${binding.ruleset.slug} has no enabled rotate-tv-streams rule`,
-      );
+    const ctx = { prisma: this.prisma, from, to };
+    const planned: PlannedEngineSlot[] = [];
+
+    for (const rule of binding.ruleset.rules) {
+      const planner = this.planners.get(rule.kind);
+      if (!planner) {
+        throw new Error(`No planner registered for kind "${rule.kind}"`);
+      }
+      planned.push(...(await planner.plan(rule, ctx)));
     }
 
-    const payload = parseRotateTvStreamsPayload(rotateRule.payload);
-    const streams = await this.resolveStreams(payload.streamTitles);
-    const planned = planRotateTvStreams({ from, to, payload, streams });
+    assertNoOverlaps(planned);
 
     if (options.dryRun) {
       return {
         channelId: channel.id,
         rulesetId: binding.rulesetId,
-        ruleId: rotateRule.id,
         dryRun: true,
         planned,
       };
@@ -89,14 +73,13 @@ export class SchedulerService {
         startsAt: slot.startsAt,
         endsAt: slot.endsAt,
         origin: 'engine',
-        ruleId: rotateRule.id,
+        ruleId: slot.ruleId,
       })),
     });
 
     return {
       channelId: channel.id,
       rulesetId: binding.rulesetId,
-      ruleId: rotateRule.id,
       dryRun: false,
       planned,
     };
@@ -124,6 +107,39 @@ export class SchedulerService {
       });
     }
     return resolved;
+  }
+
+  private async requireChannel(slug: string) {
+    const channel = await this.prisma.channel.findUnique({
+      where: { slug },
+    });
+    if (!channel) {
+      throw new NotFoundException(`Channel slug ${slug} not found`);
+    }
+    return channel;
+  }
+
+  private async requireActiveBinding(channelId: string) {
+    const binding = await this.prisma.channelRuleset.findFirst({
+      where: { channelId, isActive: true },
+      orderBy: { priority: 'asc' },
+      include: {
+        ruleset: {
+          include: {
+            rules: {
+              where: { enabled: true },
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
+        },
+      },
+    });
+    if (!binding) {
+      throw new NotFoundException(
+        `No active ruleset bound to channel ${channelId}`,
+      );
+    }
+    return binding;
   }
 }
 
