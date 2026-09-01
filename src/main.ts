@@ -24,6 +24,9 @@ async function bootstrap() {
     .addTag('schedule-slots')
     .addTag('media-assets')
     .addTag('works')
+    .addTag('rulesets')
+    .addTag('rules')
+    .addTag('channel-rulesets')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

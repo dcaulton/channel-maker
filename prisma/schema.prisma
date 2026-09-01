@@ -15,6 +15,7 @@ model Channel {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   slots       ScheduleSlot[]
+  rulesetBindings ChannelRuleset[]
 }
 
 model ScheduleSlot {
@@ -30,12 +31,17 @@ model ScheduleSlot {
   endsAt      DateTime
   title       String
   description String?
+
+  origin      String   @default("manual") // manual | engine | override
+  ruleId      String?
+  rule        Rule?    @relation(fields: [ruleId], references: [id], onDelete: SetNull)  
  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([channelId, startsAt])
   @@index([mediaAssetId])
+  @@index([ruleId])
 }
 
 /// Catalog knowledge about a title (movie, episode, etc.).
@@ -91,4 +97,62 @@ model MediaAsset {
   slots       ScheduleSlot[]
 
   @@index([workId])
+}
+
+model Ruleset {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  /// sequential | first-match  (only sequential is implemented)
+  applyMode   String   @default("sequential")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rules       Rule[]
+  channels    ChannelRuleset[]
+}
+
+model Rule {
+  id            String   @id @default(cuid())
+  rulesetId     String
+  ruleset       Ruleset  @relation(fields: [rulesetId], references: [id], onDelete: Cascade)
+
+  name          String
+  /// rotate-series | no-repeat-episode | catalog-allowlist | llm | suggest
+  kind          String
+  /// local = this ruleset/channel; global = applies across channels unless skipped
+  scope         String   @default("local")
+  /// When false, this local rule may ignore global constraints (theme weekend).
+  honorGlobals  Boolean  @default(true)
+  enabled       Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  payload       Json
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  slots         ScheduleSlot[]
+
+  @@index([rulesetId, sortOrder])
+}
+
+model ChannelRuleset {
+  id         String   @id @default(cuid())
+  channelId  String
+  channel    Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  rulesetId  String
+  ruleset    Ruleset  @relation(fields: [rulesetId], references: [id], onDelete: Cascade)
+
+  priority   Int      @default(0)
+  isActive   Boolean  @default(true)
+  startsAt   DateTime?
+  endsAt     DateTime?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([channelId, rulesetId])
+  @@index([channelId, isActive])
 }
