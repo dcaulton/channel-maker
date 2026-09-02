@@ -95,15 +95,22 @@ export function localWeekday(
   day: number,
 ): number {
   const noon = zonedLocalToUtc(timeZone, year, month, day, 12, 0);
-  return Number(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      weekday: 'short',
-    })
-      .formatToParts(noon)
-      .find((part) => part.type === 'weekday')?.value
-      ? // JS Sunday=0
-        new Date(noon.toLocaleString('en-US', { timeZone: 'UTC' })).getUTCDay()
-      : 0,
-  );
+  const label = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    weekday: 'short',
+  }).format(noon);
+  const map: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  const value = map[label];
+  if (value === undefined) {
+    throw new Error(`Unexpected weekday ${label}`);
+  }
+  return value;
 }

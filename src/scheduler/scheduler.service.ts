@@ -4,7 +4,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { type RotateTvStreamItem } from './rotate-tv-streams';
 import { RotateTvStreamsPlanner } from './planners/rotate-tv-streams.planner';
 import { WindowedSourcesPlanner } from './planners/windowed-sources.planner';
-import { RulePlanner } from './rule-planner';
 import {
   assertNoOverlaps,
   type PlannedEngineSlot,
@@ -20,6 +19,7 @@ export type FillOptions = {
 
 @Injectable()
 export class SchedulerService {
+  private readonly planners: Map<string, RulePlanner>;
   constructor(private readonly prisma: PrismaService) {
     this.planners = new Map<string, RulePlanner>([
       ['rotate-tv-streams', new RotateTvStreamsPlanner()],

@@ -43,7 +43,6 @@ async function main() {
         {
           channelId: result.channelId,
           rulesetId: result.rulesetId,
-          ruleId: result.ruleId,
           dryRun: result.dryRun,
           slots: result.planned.length,
           titles: result.planned.map((slot) => ({
