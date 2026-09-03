@@ -4,9 +4,12 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { SchedulerService } from './scheduler.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('run-fill-schedule');
 
 function printHelp() {
-  console.log(`Fill engine-owned slots from the channel's active ruleset.
+  logger.log(`Fill engine-owned slots from the channel's active ruleset.
 
 Usage:
   pnpm fill-schedule -- <channel-slug> [--dry-run]
@@ -38,7 +41,7 @@ async function main() {
   try {
     const scheduler = new SchedulerService(prisma as unknown as PrismaService);
     const result = await scheduler.fillChannel({ channelSlug, dryRun });
-    console.log(
+    logger.log(
       JSON.stringify(
         {
           channelId: result.channelId,
@@ -61,6 +64,6 @@ async function main() {
 }
 
 main().catch((error: unknown) => {
-  console.error(error);
+  logger.error(error);
   process.exit(1);
 });

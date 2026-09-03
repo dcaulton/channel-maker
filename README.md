@@ -17,6 +17,10 @@ Early skeleton. Basic NestJS app with health endpoint.
 
 ## Development
 
+# Optional: start Observabilty / LGTM docker container
+
+Use the defaults for the grafana/otel-lgtm:latest container
+
 # Install dependencies, set up db, start in dev / locally
 
 ```

@@ -12,6 +12,7 @@ import {
   Query,
   Res,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -30,6 +31,8 @@ import { UpdateChannelDto } from './dto/update-channel.dto';
 @ApiTags('channels')
 @Controller('channels')
 export class ChannelsController {
+  private readonly logger = new Logger(ChannelsController.name);
+
   constructor(
     private readonly channelsService: ChannelsService,
     private readonly config: ConfigService,
@@ -46,6 +49,9 @@ export class ChannelsController {
   @ApiOperation({ summary: 'List all channels' })
   @ApiOkResponse({ description: 'List of channels' })
   findAll() {
+    this.logger.log(
+      'calling list all channels for some funny reason-----------------------',
+    );
     return this.channelsService.findAll();
   }
 
