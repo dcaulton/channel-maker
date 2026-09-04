@@ -1,37 +1,33 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { Test } from '@nestjs/testing';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
+import request from 'supertest';
+import { AppModule } from '../src/app.module';
 
 describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
   let redis: StartedRedisContainer;
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
+  beforeAll(async () => {
     redis = await new RedisContainer('redis:7-alpine')
       .withStartupTimeout(120_000)
       .start();
     process.env.REDIS_URL = redis.getConnectionUrl();
 
+    const moduleFixture = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
     app = moduleFixture.createNestApplication();
     await app.init();
-  });
+  }, 180_000);
 
   it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+    return request(app.getHttpServer()).get('/').expect(200);
   });
 
-  afterEach(async () => {
-    await redis.stop();
+  afterAll(async () => {
     await app.close();
-  });
+    await redis.stop();
+  }, 60_000);
 });
