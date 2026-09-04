@@ -20,8 +20,10 @@ import { redisConnection } from './jobs/redis.connection';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     EventEmitterModule.forRoot(),
-    BullModule.forRoot({
-      connection: redisConnection(),
+    BullModule.forRootAsync({
+      useFactory: () => ({
+        connection: redisConnection(),
+      }),
     }),
     JobsModule,
     LoggerModule.forRoot({

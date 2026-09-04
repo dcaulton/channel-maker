@@ -5,6 +5,7 @@ import {
   PostgreSqlContainer,
   StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
+import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import { execSync } from 'node:child_process';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
@@ -21,6 +22,7 @@ type ChannelResponse = {
 describe('Channels + ScheduleSlots (e2e)', () => {
   let app: INestApplication;
   let container: StartedPostgreSqlContainer;
+  let redis: StartedRedisContainer;
 
   beforeAll(async () => {
     container = await new PostgreSqlContainer('postgres:16-alpine')
@@ -35,6 +37,11 @@ describe('Channels + ScheduleSlots (e2e)', () => {
 
     const connectionString = container.getConnectionUri();
     process.env.DATABASE_URL = connectionString;
+
+    redis = await new RedisContainer('redis:7-alpine')
+      .withStartupTimeout(120_000)
+      .start();
+    process.env.REDIS_URL = redis.getConnectionUrl();
 
     execSync('pnpm exec prisma migrate deploy', {
       stdio: 'inherit',
@@ -67,6 +74,7 @@ describe('Channels + ScheduleSlots (e2e)', () => {
       await app.close();
     }
     await container?.stop().catch(() => undefined);
+    await redis.stop();
   });
 
   it('CRUD channel and attach a schedule slot', async () => {
