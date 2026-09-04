@@ -29,6 +29,7 @@ async function bootstrap() {
     .addTag('rulesets')
     .addTag('rules')
     .addTag('channel-rulesets')
+    .addTag('jobs')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

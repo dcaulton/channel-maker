@@ -11,10 +11,19 @@ import { MediaAssetsModule } from './media-assets/media-assets.module';
 import { WorksModule } from './works/works.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { RulesetsModule } from './rulesets/rulesets.module';
+import { BullModule } from '@nestjs/bullmq';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { JobsModule } from './jobs/jobs.module';
+import { redisConnection } from './jobs/redis.connection';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    EventEmitterModule.forRoot(),
+    BullModule.forRoot({
+      connection: redisConnection(),
+    }),
+    JobsModule,
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',

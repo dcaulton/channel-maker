@@ -5,5 +5,8 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "transformIgnorePatterns": [
+    "/node_modules/(?!.pnpm/@nestjs\\+bullmq)(?!.pnpm/@nestjs\\+bull-shared)(?!.pnpm/@nestjs\\+event-emitter)(?!@nestjs/bullmq)(?!@nestjs/bull-shared)(?!@nestjs/event-emitter)"
+  ]
 }
