@@ -2,6 +2,7 @@ import { zonedLocalToUtc } from './zoned-time';
 import {
   parseWindowedSourcesPayload,
   planWindowedSources,
+  packEpisodeWindow,
   type EpisodeRef,
 } from './windowed-sources';
 
@@ -184,5 +185,134 @@ describe('planWindowedSources', () => {
     const slates = planned.filter((slot) => slot.title === 'No programming');
     expect(nights).toHaveLength(14);
     expect(slates).toHaveLength(14);
+  });
+});
+
+describe('packEpisodeWindow', () => {
+  const slate = slateByTitle['No programming'];
+
+  it('keeps even 30-min catalogs exact (no leftover)', () => {
+    const showA = catalog('SHOWA', [8, 10, 14]);
+    const { slots } = packEpisodeWindow({
+      catalog: showA,
+      seriesTitle: 'SHOWA',
+      windowStart: zonedLocalToUtc(TZ, 2026, 9, 1, 5, 0),
+      windowEnd: zonedLocalToUtc(TZ, 2026, 9, 1, 9, 0),
+      index: 0,
+      offsetSec: 0,
+      overflow: 'slate',
+      slate,
+    });
+    expect(slots).toHaveLength(8);
+    expect(slots.every((slot) => slot.title.startsWith('SHOWA-'))).toBe(true);
+  });
+
+  it('pads leftover when 22-min episodes do not fill 4h', () => {
+    const short = catalog('SHOWA', [8, 10, 14]).map((ep) => ({
+      ...ep,
+      durationSec: 22 * 60,
+    }));
+    const windowStart = zonedLocalToUtc(TZ, 2026, 9, 1, 5, 0);
+    const windowEnd = zonedLocalToUtc(TZ, 2026, 9, 1, 9, 0);
+    const { slots } = packEpisodeWindow({
+      catalog: short,
+      seriesTitle: 'SHOWA',
+      windowStart,
+      windowEnd,
+      index: 0,
+      offsetSec: 0,
+      overflow: 'slate',
+      slate,
+    });
+    // 240 min / 22 = 10 eps + 20 min slate
+    expect(slots).toHaveLength(11);
+    expect(slots[10].title).toBe('No programming');
+    expect(
+      (slots[10].endsAt.getTime() - slots[10].startsAt.getTime()) / 1000,
+    ).toBe(20 * 60);
+  });
+
+  it('carries a 2h movie across two 1h windows', () => {
+    const films: EpisodeRef[] = [
+      {
+        title: 'Long Film',
+        workId: 'w-film',
+        mediaAssetId: 'a-film',
+        sourceUrl: 'https://nas.local/movies/long.mkv',
+        season: 1,
+        episode: 1,
+        durationSec: 7200,
+      },
+    ];
+    const day1Start = zonedLocalToUtc(TZ, 2026, 9, 1, 21, 0);
+    const day1End = zonedLocalToUtc(TZ, 2026, 9, 1, 22, 0);
+    const first = packEpisodeWindow({
+      catalog: films,
+      seriesTitle: 'Films',
+      windowStart: day1Start,
+      windowEnd: day1End,
+      index: 0,
+      offsetSec: 0,
+      overflow: 'carry',
+    });
+    expect(first.slots[0].startOffsetSec).toBe(0);
+    expect(first.state).toEqual({ index: 0, offsetSec: 3600 });
+
+    const second = packEpisodeWindow({
+      catalog: films,
+      seriesTitle: 'Films',
+      windowStart: zonedLocalToUtc(TZ, 2026, 9, 2, 21, 0),
+      windowEnd: zonedLocalToUtc(TZ, 2026, 9, 2, 22, 0),
+      index: first.state.index,
+      offsetSec: first.state.offsetSec,
+      overflow: 'carry',
+    });
+    expect(second.slots[0].startOffsetSec).toBe(3600);
+    expect(second.state).toEqual({ index: 0, offsetSec: 0 });
+  });
+});
+
+describe('planWindowedSources uneven + carry', () => {
+  it('resumes carry across calendar days from origin (not from DB)', () => {
+    const filmPayload = parseWindowedSourcesPayload({
+      timeZone: TZ,
+      episodeOrigin: '2026-09-01',
+      fallbackSlateTitle: 'No programming',
+      items: [
+        {
+          start: '21:00',
+          end: '22:00',
+          days: 'daily',
+          mode: 'episodes',
+          title: 'Films',
+          seriesTitle: 'Films',
+          overflow: 'carry',
+        },
+      ],
+    });
+    const films = {
+      Films: [
+        {
+          title: 'Long Film',
+          workId: 'w-film',
+          mediaAssetId: 'a-film',
+          sourceUrl: 'https://nas.local/movies/long.mkv',
+          season: 1,
+          episode: 1,
+          durationSec: 7200,
+        },
+      ],
+    };
+
+    const day2 = planWindowedSources({
+      ...dayRange('2026-09-02'),
+      payload: filmPayload,
+      liveByTitle: {},
+      episodesBySeries: films,
+      slateByTitle,
+    });
+    const filmSlots = day2.filter((slot) => slot.title === 'Long Film');
+    expect(filmSlots).toHaveLength(1);
+    expect(filmSlots[0].startOffsetSec).toBe(3600);
   });
 });

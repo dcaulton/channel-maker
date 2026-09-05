@@ -15,12 +15,15 @@ export type WindowedSourceItem = {
   mode: WindowMode;
   title: string;
   seriesTitle?: string;
+  overflow?: 'slate' | 'carry';
+  slateTitle?: string;
 };
 
 export type WindowedSourcesPayload = {
   timeZone: string;
   episodeOrigin: string;
   items: WindowedSourceItem[];
+  fallbackSlateTitle?: string;
 };
 
 export type EpisodeRef = {
@@ -55,9 +58,11 @@ export type PlannedWindowSlot = {
   workId: string;
   mediaAssetId: string;
   sourceUrl: string;
+  startOffsetSec?: number;
 };
 
 type CivilDate = { year: number; month: number; day: number };
+type PackState = { index: number; offsetSec: number };
 
 export function parseWindowedSourcesPayload(
   payload: unknown,
@@ -88,6 +93,10 @@ export function parseWindowedSourcesPayload(
     timeZone: raw.timeZone,
     episodeOrigin: raw.episodeOrigin,
     items: raw.items.map((item, index) => parseItem(item, index)),
+    fallbackSlateTitle:
+      typeof raw.fallbackSlateTitle === 'string'
+        ? raw.fallbackSlateTitle
+        : undefined,
   };
 }
 
@@ -117,6 +126,13 @@ function parseItem(item: unknown, index: number): WindowedSourceItem {
     }
     days = raw.days;
   }
+  let overflow: 'slate' | 'carry' | undefined;
+  if (raw.overflow !== undefined) {
+    if (raw.overflow !== 'slate' && raw.overflow !== 'carry') {
+      throw new Error(`items[${index}].overflow must be slate|carry`);
+    }
+    overflow = raw.overflow;
+  }
   return {
     start: raw.start,
     end: raw.end,
@@ -125,6 +141,8 @@ function parseItem(item: unknown, index: number): WindowedSourceItem {
     title: raw.title,
     seriesTitle:
       typeof raw.seriesTitle === 'string' ? raw.seriesTitle : undefined,
+    overflow: overflow,
+    slateTitle: typeof raw.slateTitle === 'string' ? raw.slateTitle : undefined,
   };
 }
 
@@ -173,6 +191,7 @@ export function planWindowedSources(args: {
           liveByTitle: args.liveByTitle,
           episodesBySeries: args.episodesBySeries,
           slateByTitle: args.slateByTitle,
+          fallbackSlateTitle: args.payload.fallbackSlateTitle,
         }),
       );
     }
@@ -191,6 +210,7 @@ function planItem(args: {
   liveByTitle: Record<string, LiveRef>;
   episodesBySeries: Record<string, EpisodeRef[]>;
   slateByTitle: Record<string, SlateRef>;
+  fallbackSlateTitle?: string;
 }): PlannedWindowSlot[] {
   const { item, start, end } = args;
   if (item.mode === 'live') {
@@ -235,63 +255,30 @@ function planItem(args: {
     throw new Error(`No episode catalog for "${seriesTitle}"`);
   }
 
-  const occurrence = countPriorOccurrences(
-    args.origin,
-    args.day,
-    args.timeZone,
+  const overflow = item.overflow ?? 'slate';
+  const slateTitle =
+    item.slateTitle ?? args.fallbackSlateTitle ?? 'No programming';
+
+  const { index, offsetSec } = replayCursor({
+    catalog,
+    origin: args.origin,
+    day: args.day,
+    timeZone: args.timeZone,
     item,
-  );
-  const perWindow = episodesThatFit(catalog, start, end);
-  if (perWindow === 0) {
-    return [];
-  }
-  const startIndex = (occurrence * perWindow) % catalog.length;
-  const slots: PlannedWindowSlot[] = [];
-  let cursor = start;
-  for (let i = 0; i < perWindow; i += 1) {
-    const ep = catalog[(startIndex + i) % catalog.length];
-    const endsAt = new Date(cursor.getTime() + ep.durationSec * 1000);
-    slots.push({
-      startsAt: cursor,
-      endsAt,
-      title: ep.title,
-      description: `windowed-sources ${seriesTitle} S${pad(ep.season)}E${pad(ep.episode)}`,
-      workId: ep.workId,
-      mediaAssetId: ep.mediaAssetId,
-      sourceUrl: ep.sourceUrl,
-    });
-    cursor = endsAt;
-  }
-  return slots;
-}
+    overflow,
+  });
 
-function episodesThatFit(
-  catalog: EpisodeRef[],
-  start: Date,
-  end: Date,
-): number {
-  const windowMs = end.getTime() - start.getTime();
-  // Mock catalogs are uniform duration; use the first episode.
-  const durationMs = catalog[0].durationSec * 1000;
-  return Math.floor(windowMs / durationMs);
-}
-
-function countPriorOccurrences(
-  origin: CivilDate,
-  day: CivilDate,
-  timeZone: string,
-  item: WindowedSourceItem,
-): number {
-  let count = 0;
-  for (const cursor of eachCivilDay(
-    origin,
-    addLocalDays(day.year, day.month, day.day, -1),
-  )) {
-    if (runsOnDay(item, timeZone, cursor)) {
-      count += 1;
-    }
-  }
-  return count;
+  return packEpisodeWindow({
+    catalog,
+    seriesTitle,
+    windowStart: start,
+    windowEnd: end,
+    index,
+    offsetSec,
+    overflow,
+    slate: overflow === 'slate' ? args.slateByTitle[slateTitle] : undefined,
+    slateTitle,
+  }).slots;
 }
 
 function runsOnDay(
@@ -369,4 +356,115 @@ function compareCivil(a: CivilDate, b: CivilDate): number {
 
 function pad(n: number): string {
   return n.toString().padStart(2, '0');
+}
+
+function replayCursor(args: {
+  catalog: EpisodeRef[];
+  origin: CivilDate;
+  day: CivilDate;
+  timeZone: string;
+  item: WindowedSourceItem;
+  overflow: 'slate' | 'carry';
+}): PackState {
+  let state: PackState = { index: 0, offsetSec: 0 };
+  const prior = eachCivilDay(
+    args.origin,
+    addLocalDays(args.day.year, args.day.month, args.day.day, -1),
+  );
+  for (const day of prior) {
+    if (!runsOnDay(args.item, args.timeZone, day)) {
+      continue;
+    }
+    const { start, end } = windowUtc(
+      args.timeZone,
+      day,
+      args.item.start,
+      args.item.end,
+    );
+    state = packEpisodeWindow({
+      catalog: args.catalog,
+      seriesTitle: args.item.seriesTitle ?? args.item.title,
+      windowStart: start,
+      windowEnd: end,
+      index: state.index,
+      offsetSec: state.offsetSec,
+      overflow: args.overflow,
+      slate: undefined,
+    }).state;
+  }
+  return {
+    index: state.index % args.catalog.length,
+    offsetSec: state.offsetSec,
+  };
+}
+
+export function packEpisodeWindow(args: {
+  catalog: EpisodeRef[];
+  seriesTitle: string;
+  windowStart: Date;
+  windowEnd: Date;
+  index: number;
+  offsetSec: number;
+  overflow: 'slate' | 'carry';
+  slate?: SlateRef;
+  slateTitle?: string;
+}): { slots: PlannedWindowSlot[]; state: PackState } {
+  const slots: PlannedWindowSlot[] = [];
+  let cursor = args.windowStart;
+  let index = args.index;
+  let offsetSec = args.offsetSec;
+  const catalogLen = args.catalog.length;
+
+  while (cursor < args.windowEnd) {
+    const remainingWindowSec = Math.round(
+      (args.windowEnd.getTime() - cursor.getTime()) / 1000,
+    );
+    if (remainingWindowSec <= 0) {
+      break;
+    }
+
+    const ep = args.catalog[index % catalogLen];
+    const remainingFileSec = ep.durationSec - offsetSec;
+
+    if (args.overflow === 'slate' && remainingFileSec > remainingWindowSec) {
+      if (!args.slate) {
+        throw new Error(
+          `Need a slate titled "${args.slateTitle ?? 'No programming'}" to pad leftover`,
+        );
+      }
+      slots.push({
+        startsAt: cursor,
+        endsAt: args.windowEnd,
+        title: args.slate.title,
+        description: `windowed-sources leftover slate ${remainingWindowSec}s`,
+        workId: args.slate.workId,
+        mediaAssetId: args.slate.mediaAssetId,
+        sourceUrl: args.slate.sourceUrl,
+      });
+      break;
+    }
+
+    const playSec = Math.min(remainingFileSec, remainingWindowSec);
+    const endsAt = new Date(cursor.getTime() + playSec * 1000);
+    slots.push({
+      startsAt: cursor,
+      endsAt,
+      title: ep.title,
+      description: `windowed-sources ${args.seriesTitle} S${pad(ep.season)}E${pad(ep.episode)} offset=${offsetSec}`,
+      workId: ep.workId,
+      mediaAssetId: ep.mediaAssetId,
+      sourceUrl: ep.sourceUrl,
+      startOffsetSec: offsetSec,
+    });
+
+    cursor = endsAt;
+    if (playSec >= remainingFileSec) {
+      index = (index + 1) % catalogLen;
+      offsetSec = 0;
+    } else {
+      offsetSec += playSec;
+    }
+  }
+
+  return { slots, state: { index: index % catalogLen, offsetSec } };
 }
