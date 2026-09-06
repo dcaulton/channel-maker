@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, Matches, MinLength } from 'class-validator';
 
 export class CreateRulesetDto {
-  @ApiProperty({ example: 'WLS / ME-TV / WTTW 2h rotation' })
+  @ApiProperty({ example: 'WLS-HD / METV / WTTW HD' })
   @IsString()
   @MinLength(1)
   name: string;

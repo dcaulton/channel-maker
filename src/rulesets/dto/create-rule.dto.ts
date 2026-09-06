@@ -51,7 +51,7 @@ export class CreateRuleDto {
 
   @ApiProperty({
     example: {
-      streamTitles: ['WLS', 'ME-TV', 'WTTW'],
+      streamTitles: ['WLS-HD', 'METV', 'WTTW HD'],
       slotDurationSec: 7200,
     },
   })

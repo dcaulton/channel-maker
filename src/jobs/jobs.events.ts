@@ -4,6 +4,7 @@ import {
   EVENT_INGEST_COMPLETED,
   EVENT_INGEST_FILE,
   EVENT_LLM_COMPLETED,
+  EVENT_TVH_COMPLETED,
 } from './jobs.constants';
 
 @Injectable()
@@ -27,5 +28,10 @@ export class JobsEvents {
   @OnEvent(EVENT_LLM_COMPLETED)
   onLlmCompleted(payload: { jobId: string; workId: string; synopsis: string }) {
     this.logger.log(payload, EVENT_LLM_COMPLETED);
+  }
+
+  @OnEvent(EVENT_TVH_COMPLETED)
+  onTvhCompleted(payload: { jobId: string; result: object }) {
+    this.logger.log(payload, EVENT_TVH_COMPLETED);
   }
 }

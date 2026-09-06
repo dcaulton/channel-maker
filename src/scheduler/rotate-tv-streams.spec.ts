@@ -3,19 +3,19 @@ import { alignDown, planRotateTvStreams } from './rotate-tv-streams';
 describe('planRotateTvStreams', () => {
   const streams = [
     {
-      title: 'WLS',
+      title: 'WLS-HD',
       workId: 'w1',
       mediaAssetId: 'a1',
       sourceUrl: 'http://strangehub:9981/stream/channel/wls',
     },
     {
-      title: 'ME-TV',
+      title: 'METV',
       workId: 'w2',
       mediaAssetId: 'a2',
       sourceUrl: 'http://strangehub:9981/stream/channel/metv',
     },
     {
-      title: 'WTTW',
+      title: 'WTTW HD',
       workId: 'w3',
       mediaAssetId: 'a3',
       sourceUrl: 'http://strangehub:9981/stream/channel/wttw',
@@ -39,7 +39,11 @@ describe('planRotateTvStreams', () => {
       streams,
     });
 
-    expect(planned.map((slot) => slot.title)).toEqual(['WTTW', 'WLS', 'ME-TV']);
+    expect(planned.map((slot) => slot.title)).toEqual([
+      'WTTW HD',
+      'WLS-HD',
+      'METV',
+    ]);
     expect(planned[0].sourceUrl).toContain('/wttw');
     expect(planned[0].startsAt.toISOString()).toBe('2026-09-01T16:00:00.000Z');
     expect(planned[2].endsAt.toISOString()).toBe('2026-09-01T22:00:00.000Z');
@@ -59,6 +63,6 @@ describe('planRotateTvStreams', () => {
       streams,
     });
     expect(first[0].title).toBe(second[0].title);
-    expect(first[0].title).toBe('WLS');
+    expect(first[0].title).toBe('WLS-HD');
   });
 });

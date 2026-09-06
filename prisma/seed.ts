@@ -99,19 +99,19 @@ async function addTvStreamRules(prisma: PrismaClient) {
 
   const streamSeed = [
     {
-      title: 'WLS',
+      title: 'WLS-HD',
       year: undefined as number | undefined,
       description: 'ABC 7 Chicago via TVHeadend on strangehub',
       sourceUrl: 'http://strangehub:9981/stream/channel/wls',
     },
     {
-      title: 'ME-TV',
+      title: 'METV',
       year: undefined,
       description: 'MeTV Chicago via TVHeadend on strangehub',
       sourceUrl: 'http://strangehub:9981/stream/channel/metv',
     },
     {
-      title: 'WTTW',
+      title: 'WTTW HD',
       year: undefined,
       description: 'PBS 11 Chicago via TVHeadend on strangehub',
       sourceUrl: 'http://strangehub:9981/stream/channel/wttw',
@@ -153,7 +153,7 @@ async function addTvStreamRules(prisma: PrismaClient) {
     where: { slug: 'wls-metv-wttw' },
     update: {},
     create: {
-      name: 'WLS / ME-TV / WTTW 2h rotation',
+      name: 'WLS-HD / METV / WTTW HD 2h rotation',
       slug: 'wls-metv-wttw',
       description: 'Local deterministic live-stream rotation',
       applyMode: 'sequential',
@@ -161,7 +161,7 @@ async function addTvStreamRules(prisma: PrismaClient) {
   });
 
   const rotatePayload = {
-    streamTitles: ['WLS', 'ME-TV', 'WTTW'],
+    streamTitles: ['WLS-HD', 'METV', 'WTTW HD'],
     slotDurationSec: 7200,
   };
 
@@ -307,7 +307,7 @@ async function addDaypartLab(prisma: PrismaClient) {
         end: '05:00',
         days: 'daily',
         mode: 'live',
-        title: 'WLS',
+        title: 'WLS-HD',
       },
       {
         start: '05:00',

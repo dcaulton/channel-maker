@@ -37,7 +37,7 @@ const payload = parseWindowedSourcesPayload({
       end: '05:00',
       days: 'daily',
       mode: 'live',
-      title: 'WLS',
+      title: 'WLS-HD',
     },
     {
       start: '05:00',
@@ -74,8 +74,8 @@ const payload = parseWindowedSourcesPayload({
 });
 
 const liveByTitle = {
-  WLS: {
-    title: 'WLS',
+  'WLS-HD': {
+    title: 'WLS-HD',
     workId: 'w-wls',
     mediaAssetId: 'a-wls',
     sourceUrl: 'http://strangehub:9981/stream/channel/wls',
@@ -122,7 +122,7 @@ describe('planWindowedSources', () => {
       slateByTitle,
     });
 
-    expect(planned[0].title).toBe('WLS');
+    expect(planned[0].title).toBe('WLS-HD');
     expect(planned[0].startsAt.toISOString()).toBe(
       zonedLocalToUtc(TZ, 2026, 9, 1, 0, 0).toISOString(),
     );
@@ -181,7 +181,7 @@ describe('planWindowedSources', () => {
       episodesBySeries,
       slateByTitle,
     });
-    const nights = planned.filter((slot) => slot.title === 'WLS');
+    const nights = planned.filter((slot) => slot.title === 'WLS-HD');
     const slates = planned.filter((slot) => slot.title === 'No programming');
     expect(nights).toHaveLength(14);
     expect(slates).toHaveLength(14);

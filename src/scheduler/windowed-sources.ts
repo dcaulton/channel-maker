@@ -74,6 +74,7 @@ export function parseWindowedSourcesPayload(
     timeZone?: unknown;
     episodeOrigin?: unknown;
     items?: unknown;
+    fallbackSlateTitle?: unknown;
   };
   if (typeof raw.timeZone !== 'string' || raw.timeZone.length === 0) {
     throw new Error('windowed-sources payload.timeZone is required');

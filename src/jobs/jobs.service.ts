@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { BACKGROUND_QUEUE, JOB_INGEST, JOB_LLM_STUB } from './jobs.constants';
+import {
+  BACKGROUND_QUEUE,
+  JOB_INGEST,
+  JOB_LLM_STUB,
+  JOB_TVH_SYNC,
+} from './jobs.constants';
 import { EnqueueIngestDto } from './dto/enqueue-ingest.dto';
 import { EnqueueLlmDto } from './dto/enqueue-llm.dto';
+import { EnqueueTvhSyncDto } from './dto/enqueue-tvh-sync.dto';
 
 @Injectable()
 export class JobsService {
@@ -29,6 +35,14 @@ export class JobsService {
         workId: dto.workId,
         prompt: dto.prompt ?? 'stub synopsis',
       },
+      { removeOnComplete: 50, removeOnFail: 50 },
+    );
+  }
+
+  enqueueTvhSync(dto: EnqueueTvhSyncDto) {
+    return this.background.add(
+      JOB_TVH_SYNC,
+      { dryRun: dto.dryRun ?? false },
       { removeOnComplete: 50, removeOnFail: 50 },
     );
   }

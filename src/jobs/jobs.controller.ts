@@ -3,6 +3,7 @@ import { ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JobsService } from './jobs.service';
 import { EnqueueIngestDto } from './dto/enqueue-ingest.dto';
 import { EnqueueLlmDto } from './dto/enqueue-llm.dto';
+import { EnqueueTvhSyncDto } from './dto/enqueue-tvh-sync.dto';
 
 @ApiTags('jobs')
 @Controller('jobs')
@@ -22,6 +23,13 @@ export class JobsController {
   @ApiCreatedResponse({ description: 'Job queued' })
   async llm(@Body() dto: EnqueueLlmDto) {
     const job = await this.jobsService.enqueueLlm(dto);
+    return { id: job.id, name: job.name, queue: job.queueName };
+  }
+
+  @Post('tvh-sync')
+  @ApiOperation({ summary: 'Discover TVHeadend channels into Works/assets' })
+  async tvhSync(@Body() dto: EnqueueTvhSyncDto) {
+    const job = await this.jobsService.enqueueTvhSync(dto);
     return { id: job.id, name: job.name, queue: job.queueName };
   }
 }
