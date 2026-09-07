@@ -6,6 +6,7 @@ import { JobsProcessor } from './jobs.processor';
 import { JobsEvents } from './jobs.events';
 import { JobsController } from './jobs.controller';
 import { TvhModule } from '../tvheadend/tvh.module';
+import { IngestModule } from '../ingest/ingest.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { TvhModule } from '../tvheadend/tvh.module';
       name: BACKGROUND_QUEUE,
     }),
     TvhModule,
+    IngestModule,
   ],
   controllers: [JobsController],
   providers: [JobsService, JobsProcessor, JobsEvents],

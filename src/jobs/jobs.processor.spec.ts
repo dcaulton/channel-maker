@@ -1,7 +1,6 @@
 import { JobsProcessor } from './jobs.processor';
 import {
   EVENT_INGEST_COMPLETED,
-  EVENT_INGEST_FILE,
   EVENT_LLM_COMPLETED,
   JOB_INGEST,
   JOB_LLM_STUB,
@@ -10,33 +9,47 @@ import {
 describe('JobsProcessor', () => {
   let processor: JobsProcessor;
   let events: { emit: jest.Mock };
+  let ingest: { ingest: jest.Mock };
+  let tvhSync: { sync: jest.Mock };
 
   beforeEach(() => {
     events = { emit: jest.fn() };
-    processor = new JobsProcessor(events as never);
+    ingest = { ingest: jest.fn() };
+    tvhSync = { sync: jest.fn() };
+    processor = new JobsProcessor(
+      events as never,
+      tvhSync as never,
+      ingest as never,
+    );
   });
 
-  it('scans three stub files and emits ingest events', async () => {
+  it('delegates ingest jobs and emits completed', async () => {
+    ingest.ingest.mockResolvedValue({
+      root: '/media',
+      scanned: 3,
+      upserted: 0,
+      skipped: 3,
+      dryRun: true,
+    });
+
     const job = {
       id: 'job-1',
       name: JOB_INGEST,
       data: { root: '/media', dryRun: true },
-      updateProgress: jest.fn().mockResolvedValue(undefined),
+      updateProgress: jest.fn(),
     };
 
     const result = await processor.process(job as never);
 
-    expect(result).toEqual({ scanned: 3, dryRun: true });
-    expect(events.emit).toHaveBeenCalledTimes(4);
-    expect(events.emit).toHaveBeenCalledWith(
-      EVENT_INGEST_FILE,
-      expect.objectContaining({
-        jobId: 'job-1',
-        filePath: '/media/show-a/S01E01.mkv',
-        dryRun: true,
-      }),
+    expect(ingest.ingest).toHaveBeenCalledWith({
+      root: '/media',
+      dryRun: true,
+      publicBase: undefined,
+    });
+    expect(result).toEqual(
+      expect.objectContaining({ scanned: 3, dryRun: true }),
     );
-    expect(events.emit).toHaveBeenLastCalledWith(
+    expect(events.emit).toHaveBeenCalledWith(
       EVENT_INGEST_COMPLETED,
       expect.objectContaining({ jobId: 'job-1', scanned: 3 }),
     );

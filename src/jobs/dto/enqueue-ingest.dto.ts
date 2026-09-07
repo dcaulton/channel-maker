@@ -15,4 +15,13 @@ export class EnqueueIngestDto {
   @IsOptional()
   @IsBoolean()
   dryRun?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'http://10.0.0.50/media',
+    description:
+      'If set, sourceUrl is publicBase + relative path; else the filesystem path',
+  })
+  @IsOptional()
+  @IsString()
+  publicBase?: string;
 }

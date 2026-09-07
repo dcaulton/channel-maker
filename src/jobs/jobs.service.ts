@@ -23,6 +23,7 @@ export class JobsService {
       {
         root: dto.root ?? '/mnt/nas/media',
         dryRun: dto.dryRun ?? true,
+        publicBase: dto.publicBase ?? '',
       },
       { removeOnComplete: 50, removeOnFail: 50 },
     );

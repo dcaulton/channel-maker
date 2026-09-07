@@ -17,7 +17,7 @@ describe('JobsService', () => {
 
     expect(queue.add).toHaveBeenCalledWith(
       JOB_INGEST,
-      { root: '/mnt/nas/media', dryRun: true },
+      { root: '/mnt/nas/media', dryRun: true, publicBase: '' },
       expect.objectContaining({ removeOnComplete: 50 }),
     );
   });
@@ -29,7 +29,7 @@ describe('JobsService', () => {
 
     expect(queue.add).toHaveBeenCalledWith(
       JOB_INGEST,
-      { root: '/mnt/nas/tv', dryRun: false },
+      { root: '/mnt/nas/tv', dryRun: false, publicBase: '' },
       expect.any(Object),
     );
   });
