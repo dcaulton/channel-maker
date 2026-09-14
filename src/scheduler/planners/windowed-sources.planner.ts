@@ -26,9 +26,23 @@ export class WindowedSourcesPlanner implements RulePlanner {
     const seriesTitles = payload.items
       .filter((item) => item.mode === 'episodes')
       .map((item) => item.seriesTitle ?? item.title);
-    const slateTitles = payload.items
-      .filter((item) => item.mode === 'slate')
-      .map((item) => item.title);
+    const slateTitles = [
+      ...payload.items
+        .filter((item) => item.mode === 'slate')
+        .map((item) => item.title),
+      ...payload.items
+        .map((item) => item.slateTitle)
+        .filter((title): title is string => Boolean(title)),
+      payload.fallbackSlateTitle,
+      'No programming',
+    ].filter(
+      (title, i, all): title is string =>
+        Boolean(title) && all.indexOf(title) === i,
+    );
+    this.logger?.log?.({ slateTitles }, 'slate titles to resolve');
+    const slateByTitle = await this.resolveSlate(ctx, slateTitles);
+    console.log('slateTitles', slateTitles);
+    console.log('slate keys', Object.keys(slateByTitle));
 
     const planned = planWindowedSources({
       from: ctx.from,

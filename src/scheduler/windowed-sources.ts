@@ -214,6 +214,7 @@ function planItem(args: {
   fallbackSlateTitle?: string;
 }): PlannedWindowSlot[] {
   const { item, start, end } = args;
+
   if (item.mode === 'live') {
     const live = args.liveByTitle[item.title];
     if (!live) {
@@ -259,6 +260,16 @@ function planItem(args: {
   const overflow = item.overflow ?? 'slate';
   const slateTitle =
     item.slateTitle ?? args.fallbackSlateTitle ?? 'No programming';
+  const slate =
+    overflow === 'slate'
+      ? (args.slateByTitle[slateTitle] ?? args.slateByTitle['No programming'])
+      : undefined;
+
+  if (overflow === 'slate' && !slate) {
+    throw new Error(
+      `planItem missing slate "${slateTitle}"; keys=${Object.keys(args.slateByTitle).join(',')}`,
+    );
+  }
 
   const { index, offsetSec } = replayCursor({
     catalog,
@@ -267,6 +278,8 @@ function planItem(args: {
     timeZone: args.timeZone,
     item,
     overflow,
+    slate,
+    slateTitle,
   });
 
   return packEpisodeWindow({
@@ -277,7 +290,7 @@ function planItem(args: {
     index,
     offsetSec,
     overflow,
-    slate: overflow === 'slate' ? args.slateByTitle[slateTitle] : undefined,
+    slate,
     slateTitle,
   }).slots;
 }
@@ -366,6 +379,8 @@ function replayCursor(args: {
   timeZone: string;
   item: WindowedSourceItem;
   overflow: 'slate' | 'carry';
+  slate?: SlateRef;
+  slateTitle?: string;
 }): PackState {
   let state: PackState = { index: 0, offsetSec: 0 };
   const prior = eachCivilDay(
@@ -390,7 +405,8 @@ function replayCursor(args: {
       index: state.index,
       offsetSec: state.offsetSec,
       overflow: args.overflow,
-      slate: undefined,
+      slate: args.slate,
+      slateTitle: args.slateTitle,
     }).state;
   }
   return {

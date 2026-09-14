@@ -72,6 +72,7 @@ async function main() {
 
   await addTvStreamRules(prisma);
   await addDaypartLab(prisma);
+  await addSpookyRules(prisma);
 
   console.log('Seed complete:', {
     channelId: channel.id,
@@ -382,6 +383,181 @@ async function addDaypartLab(prisma: PrismaClient) {
     channelSlug: 'daypart-lab',
     from: zonedLocalToUtc('America/Chicago', 2026, 9, 1, 0, 0),
     to: zonedLocalToUtc('America/Chicago', 2026, 9, 15, 0, 0),
+  });
+}
+
+async function addSpookyRules(prisma: PrismaClient) {
+  const spooky = await prisma.channel.upsert({
+    where: { slug: 'spooky-stories' },
+    update: {
+      description: '2h anthology wheels from the Spooky-Stories folder',
+    },
+    create: {
+      name: 'Spooky Stories',
+      slug: 'spooky-stories',
+      description: '2h anthology wheels from the Spooky-Stories folder',
+    },
+  });
+
+  const spookyRules = await prisma.ruleset.upsert({
+    where: { slug: 'spooky-dayparts' },
+    update: {},
+    create: {
+      name: 'Spooky Stories dayparts',
+      slug: 'spooky-dayparts',
+      applyMode: 'sequential',
+    },
+  });
+
+  const spookyPayload = {
+    timeZone: 'America/Chicago',
+    episodeOrigin: '2026-09-08',
+    fallbackSlateTitle: 'No programming',
+    items: [
+      {
+        start: '14:00',
+        end: '16:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'Creepshow',
+        seriesTitle: 'Creepshow',
+        overflow: 'slate',
+      },
+      {
+        start: '16:00',
+        end: '18:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'Tales from the Crypt',
+        seriesTitle: 'Tales from the Crypt',
+        overflow: 'slate',
+      },
+      {
+        start: '18:00',
+        end: '20:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'Tales from the Darkside',
+        seriesTitle: 'Tales from the Darkside',
+        overflow: 'slate',
+      },
+      {
+        start: '20:00',
+        end: '22:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'Cabinet of Curiosities',
+        seriesTitle: 'Cabinet of Curiosities',
+        overflow: 'slate',
+      },
+      {
+        start: '22:00',
+        end: '23:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'Archive 81',
+        seriesTitle: 'Archive 81',
+        overflow: 'slate',
+      },
+      {
+        start: '23:00',
+        end: '24:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'Darkroom',
+        seriesTitle: 'Darkroom',
+        overflow: 'slate',
+      },
+      {
+        start: '00:00',
+        end: '01:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'Hammer House of Horror',
+        seriesTitle: 'Hammer House of Horror',
+        overflow: 'slate',
+      },
+      {
+        start: '01:00',
+        end: '02:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'Hammer House of Mystery and Suspense',
+        seriesTitle: 'Hammer House of Mystery and Suspense',
+        overflow: 'slate',
+      },
+      {
+        start: '02:00',
+        end: '04:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'Monsters',
+        seriesTitle: 'Monsters',
+        overflow: 'slate',
+      },
+      {
+        start: '04:00',
+        end: '06:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'The Outer Limits',
+        seriesTitle: 'The Outer Limits',
+        overflow: 'slate',
+      },
+      {
+        start: '06:00',
+        end: '08:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: "The Devil's Hour",
+        seriesTitle: "The Devil's Hour",
+        overflow: 'slate',
+      },
+      {
+        start: '08:00',
+        end: '14:00',
+        days: 'daily',
+        mode: 'slate',
+        title: 'No programming',
+      },
+    ],
+  };
+
+  const spookyRule = await prisma.rule.findFirst({
+    where: { rulesetId: spookyRules.id, kind: 'windowed-sources' },
+  });
+  if (spookyRule) {
+    await prisma.rule.update({
+      where: { id: spookyRule.id },
+      data: { payload: spookyPayload, enabled: true },
+    });
+  } else {
+    await prisma.rule.create({
+      data: {
+        rulesetId: spookyRules.id,
+        name: 'Spooky 2h wheels',
+        kind: 'windowed-sources',
+        scope: 'local',
+        sortOrder: 0,
+        payload: spookyPayload,
+      },
+    });
+  }
+
+  await prisma.channelRuleset.upsert({
+    where: {
+      channelId_rulesetId: {
+        channelId: spooky.id,
+        rulesetId: spookyRules.id,
+      },
+    },
+    update: { isActive: true, priority: 0 },
+    create: {
+      channelId: spooky.id,
+      rulesetId: spookyRules.id,
+      isActive: true,
+      priority: 0,
+    },
   });
 }
 
