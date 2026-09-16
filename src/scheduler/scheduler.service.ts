@@ -64,6 +64,15 @@ export class SchedulerService {
       },
     });
 
+    const needed = planned.map((slot) => slot.title);
+    const preview = [];
+    for (const name of needed) {
+      const n = await this.prisma.work.count({
+        where: { kind: 'episode', seriesTitle: name },
+      });
+      preview.push({ seriesTitle: name, episodes: n });
+    }
+
     await this.prisma.scheduleSlot.createMany({
       data: planned.map((slot) => ({
         channelId: channel.id,
@@ -82,6 +91,7 @@ export class SchedulerService {
       rulesetId: binding.rulesetId,
       dryRun: false,
       planned,
+      preview,
     };
   }
 

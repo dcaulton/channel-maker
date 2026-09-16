@@ -15,6 +15,7 @@ export type WindowedSourceItem = {
   mode: WindowMode;
   title: string;
   seriesTitle?: string;
+  seriesTitles?: string[];
   overflow?: 'slate' | 'carry';
   slateTitle?: string;
 };
@@ -142,6 +143,8 @@ function parseItem(item: unknown, index: number): WindowedSourceItem {
     title: raw.title,
     seriesTitle:
       typeof raw.seriesTitle === 'string' ? raw.seriesTitle : undefined,
+    seriesTitles:
+      typeof raw.seriesTitles === 'object' ? raw.seriesTitles : undefined,
     overflow: overflow,
     slateTitle: typeof raw.slateTitle === 'string' ? raw.slateTitle : undefined,
   };
@@ -251,12 +254,17 @@ function planItem(args: {
     ];
   }
 
-  const seriesTitle = item.seriesTitle ?? item.title;
-  const catalog = args.episodesBySeries[seriesTitle];
-  if (!catalog || catalog.length === 0) {
-    throw new Error(`No episode catalog for "${seriesTitle}"`);
+  const names =
+    item.seriesTitles && item.seriesTitles.length > 0
+      ? item.seriesTitles
+      : [item.seriesTitle ?? item.title];
+
+  const catalog = names.flatMap((name) => args.episodesBySeries[name] ?? []);
+  if (catalog.length === 0) {
+    throw new Error(`No episode catalog for "${names.join(', ')}"`);
   }
 
+  const seriesTitle = names.join(' + ');
   const overflow = item.overflow ?? 'slate';
   const slateTitle =
     item.slateTitle ?? args.fallbackSlateTitle ?? 'No programming';

@@ -16,6 +16,8 @@ export type IngestResult = {
   linked: number;
   skipped: number;
   dryRun: boolean;
+  parsedCounts: number;
+  unaliased: object;
 };
 
 @Injectable()
@@ -47,6 +49,21 @@ export class IngestService {
       const durationSec = await probeDurationSec(filePath);
       const title = filePath.split(/[/\\]/).pop() ?? sourceUrl;
       const parsed = parseMediaFilename(filePath, spookyStoriesParseProfile);
+      const parsedCounts: Record<string, number> = {};
+      const unaliased = new Set<string>();
+      const skippedReasons: { path: string; reason: string }[] = [];
+      const aliasValues = new Set(
+        Object.values(spookyStoriesParseProfile.aliases ?? {}),
+      );
+      if (parsed.kind === 'skip') {
+        skippedReasons.push({ path: filePath, reason: parsed.reason });
+      } else if (parsed.kind === 'episode') {
+        parsedCounts[parsed.seriesTitle] =
+          (parsedCounts[parsed.seriesTitle] ?? 0) + 1;
+        if (!aliasValues.has(parsed.seriesTitle)) {
+          unaliased.add(parsed.seriesTitle);
+        }
+      }
 
       this.logger.log(
         { filePath, sourceUrl, durationSec, parsed, dryRun },
@@ -104,6 +121,9 @@ export class IngestService {
       linked,
       skipped,
       dryRun,
+      parsedCounts: parsedCounts,
+      unaliased: [...unaliased],
+      skipped: skippedReasons.length,
     };
   }
 

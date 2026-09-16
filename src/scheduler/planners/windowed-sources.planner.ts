@@ -39,7 +39,6 @@ export class WindowedSourcesPlanner implements RulePlanner {
       (title, i, all): title is string =>
         Boolean(title) && all.indexOf(title) === i,
     );
-    this.logger?.log?.({ slateTitles }, 'slate titles to resolve');
     const slateByTitle = await this.resolveSlate(ctx, slateTitles);
     console.log('slateTitles', slateTitles);
     console.log('slate keys', Object.keys(slateByTitle));

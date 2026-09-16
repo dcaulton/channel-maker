@@ -37,5 +37,9 @@ export function toSourceUrl(
     return filePath;
   }
   const rel = path.relative(root, filePath).split(path.sep).join('/');
-  return `${publicBase.replace(/\/$/, '')}/${rel}`;
+  const encoded = rel
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  return `${publicBase.replace(/\/$/, '')}/${encoded}`;
 }

@@ -73,6 +73,7 @@ async function main() {
   await addTvStreamRules(prisma);
   await addDaypartLab(prisma);
   await addSpookyRules(prisma);
+  await addNoProgrammingSlate(prisma);
 
   console.log('Seed complete:', {
     channelId: channel.id,
@@ -83,6 +84,37 @@ async function main() {
 
   await prisma.$disconnect();
   await pool.end();
+}
+
+async function addNoProgrammingSlate(prisma: PrismaClient) {
+  let noProgramming = await prisma.work.findFirst({
+    where: { kind: 'slate', title: 'No programming' },
+  });
+  if (!noProgramming) {
+    noProgramming = await prisma.work.create({
+      data: { kind: 'slate', title: 'No programming' },
+    });
+  }
+
+  const slateUrl =
+    process.env.SLATE_SOURCE_URL ??
+    'http://10.0.0.89:8088/slates/no-programming.mp4';
+
+  await prisma.mediaAsset.upsert({
+    where: { sourceUrl: slateUrl },
+    update: {
+      workId: noProgramming.id,
+      durationSec: 5,
+      sourceType: 'file',
+    },
+    create: {
+      title: 'No programming',
+      sourceUrl: slateUrl,
+      sourceType: 'file',
+      durationSec: 5,
+      workId: noProgramming.id,
+    },
+  });
 }
 
 async function addTvStreamRules(prisma: PrismaClient) {

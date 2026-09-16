@@ -3,12 +3,14 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import {
   BACKGROUND_QUEUE,
+  JOB_FILL_SCHEDULE,
   JOB_INGEST,
   JOB_LLM_STUB,
   JOB_TVH_SYNC,
 } from './jobs.constants';
 import { EnqueueIngestDto } from './dto/enqueue-ingest.dto';
 import { EnqueueLlmDto } from './dto/enqueue-llm.dto';
+import { EnqueueFillDto } from './dto/enqueue-fill.dto';
 import { EnqueueTvhSyncDto } from './dto/enqueue-tvh-sync.dto';
 
 @Injectable()
@@ -16,6 +18,14 @@ export class JobsService {
   constructor(
     @InjectQueue(BACKGROUND_QUEUE) private readonly background: Queue,
   ) {}
+
+  enqueueFill(dto: EnqueueFillDto) {
+    return this.background.add(
+      JOB_FILL_SCHEDULE,
+      { channelSlug: dto.channelSlug, dryRun: false },
+      { repeat: { every: 60 * 60 * 1000 }, jobId: `fill-${dto.channelSlug}` },
+    );
+  }
 
   enqueueIngest(dto: EnqueueIngestDto) {
     return this.background.add(

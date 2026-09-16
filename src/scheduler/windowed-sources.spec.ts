@@ -316,3 +316,96 @@ describe('planWindowedSources uneven + carry', () => {
     expect(filmSlots[0].startOffsetSec).toBe(3600);
   });
 });
+
+describe('planWindowedSources seriesTitles', () => {
+  const analogPayload = parseWindowedSourcesPayload({
+    timeZone: TZ,
+    episodeOrigin: '2026-09-01',
+    fallbackSlateTitle: 'No programming',
+    items: [
+      {
+        start: '22:00',
+        end: '24:00',
+        days: 'daily',
+        mode: 'episodes',
+        title: 'Analog horror',
+        seriesTitles: ['Archive 81', 'Darkroom'],
+        overflow: 'slate',
+      },
+    ],
+  });
+
+  const analogEpisodes = {
+    'Archive 81': catalog('Archive 81', [3]),
+    Darkroom: catalog('Darkroom', [3]),
+  };
+
+  it('plays Archive 81 then Darkroom in one 2h window', () => {
+    const { from, to } = dayRange('2026-09-01');
+    const planned = planWindowedSources({
+      from,
+      to,
+      payload: analogPayload,
+      liveByTitle: {},
+      episodesBySeries: analogEpisodes,
+      slateByTitle,
+    });
+
+    const titles = planned.map((slot) => slot.title);
+    expect(titles.slice(0, 3)).toEqual([
+      'Archive 81-S01E01',
+      'Archive 81-S01E02',
+      'Archive 81-S01E03',
+    ]);
+    expect(titles[3]).toBe('Darkroom-S01E01');
+  });
+
+  it('wraps back to Archive 81 after Darkroom is exhausted', () => {
+    const { from, to } = dayRange('2026-09-01', 3);
+    const planned = planWindowedSources({
+      from,
+      to,
+      payload: analogPayload,
+      liveByTitle: {},
+      episodesBySeries: analogEpisodes,
+      slateByTitle,
+    });
+
+    const analog = planned.filter((slot) => slot.title !== 'No programming');
+
+    expect(analog.some((slot) => slot.title.startsWith('Archive 81'))).toBe(
+      true,
+    );
+    expect(analog.some((slot) => slot.title.startsWith('Darkroom'))).toBe(true);
+    expect(analog.map((slot) => slot.title)).toContain('Archive 81-S01E01');
+  });
+
+  it('still accepts singular seriesTitle', () => {
+    const payload = parseWindowedSourcesPayload({
+      timeZone: TZ,
+      episodeOrigin: '2026-09-01',
+      fallbackSlateTitle: 'No programming',
+      items: [
+        {
+          start: '22:00',
+          end: '24:00',
+          days: 'daily',
+          mode: 'episodes',
+          title: 'Creepshow',
+          seriesTitle: 'Creepshow',
+          overflow: 'slate',
+        },
+      ],
+    });
+    const { from, to } = dayRange('2026-09-01');
+    const planned = planWindowedSources({
+      from,
+      to,
+      payload,
+      liveByTitle: {},
+      episodesBySeries: { Creepshow: catalog('Creepshow', [8]) },
+      slateByTitle,
+    });
+    expect(planned[0].title).toBe('Creepshow-S01E01');
+  });
+});
