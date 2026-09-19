@@ -9,9 +9,15 @@ import {
   type PlannedEngineSlot,
   type RulePlanner,
 } from './rule-planner';
+import {
+  DEFAULT_FILL_HORIZON_MS,
+  isLogContinuous,
+  rulesetFillsSync,
+} from './log-coverage';
 
 export type FillOptions = {
-  channelSlug: string;
+  channelSlug?: string;
+  channelId?: string;
   from?: Date;
   to?: Date;
   dryRun?: boolean;
@@ -20,6 +26,7 @@ export type FillOptions = {
 @Injectable()
 export class SchedulerService {
   private readonly planners: Map<string, RulePlanner>;
+  private readonly inflight = new Map<string, Promise<void>>();
   constructor(private readonly prisma: PrismaService) {
     this.planners = new Map<string, RulePlanner>([
       ['rotate-tv-streams', new RotateTvStreamsPlanner()],
@@ -28,7 +35,16 @@ export class SchedulerService {
   }
 
   async fillChannel(options: FillOptions) {
-    const channel = await this.requireChannel(options.channelSlug);
+    const channel = options.channelId
+      ? await this.prisma.channel.findUnique({
+          where: { id: options.channelId },
+        })
+      : options.channelSlug
+        ? await this.requireChannel(options.channelSlug)
+        : null;
+    if (!channel) {
+      throw new NotFoundException('channelSlug or channelId is required');
+    }
     const binding = await this.requireActiveBinding(channel.id);
     const from = options.from ?? new Date();
     const to = options.to ?? new Date(from.getTime() + 24 * 60 * 60 * 1000);
@@ -150,6 +166,53 @@ export class SchedulerService {
       );
     }
     return binding;
+  }
+
+  async logCovers(channelId: string, from: Date, to: Date): Promise<boolean> {
+    const slots = await this.prisma.scheduleSlot.findMany({
+      where: {
+        channelId,
+        startsAt: { lt: to },
+        endsAt: { gt: from },
+      },
+      select: { startsAt: true, endsAt: true },
+      orderBy: { startsAt: 'asc' },
+    });
+    return isLogContinuous(slots, from, to);
+  }
+
+  async ensureCoverage(
+    channelId: string,
+    from: Date = new Date(),
+    to: Date = new Date(Date.now() + DEFAULT_FILL_HORIZON_MS),
+  ): Promise<void> {
+    if (await this.logCovers(channelId, from, to)) {
+      return;
+    }
+
+    const existing = this.inflight.get(channelId);
+    if (existing) {
+      await existing;
+      return;
+    }
+
+    const run = this.fillIfSync(channelId, from, to).finally(() => {
+      this.inflight.delete(channelId);
+    });
+    this.inflight.set(channelId, run);
+    await run;
+  }
+
+  private async fillIfSync(channelId: string, from: Date, to: Date) {
+    if (await this.logCovers(channelId, from, to)) {
+      return;
+    }
+    const binding = await this.requireActiveBinding(channelId);
+    const kinds = binding.ruleset.rules.map((rule) => rule.kind);
+    if (!rulesetFillsSync(kinds)) {
+      return;
+    }
+    await this.fillChannel({ channelId, from, to });
   }
 }
 

@@ -102,7 +102,7 @@ export class ChannelsController {
     const fromDate = from ? new Date(from) : new Date();
     const toDate = to
       ? new Date(to)
-      : new Date(fromDate.getTime() + 6 * 60 * 60 * 1000); // default: 6 hours
+      : new Date(fromDate.getTime() + 36 * 60 * 60 * 1000); // default: 36 hours
 
     if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
       throw new BadRequestException(

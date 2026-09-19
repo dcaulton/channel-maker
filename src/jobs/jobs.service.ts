@@ -22,8 +22,11 @@ export class JobsService {
   enqueueFill(dto: EnqueueFillDto) {
     return this.background.add(
       JOB_FILL_SCHEDULE,
-      { channelSlug: dto.channelSlug, dryRun: false },
-      { repeat: { every: 60 * 60 * 1000 }, jobId: `fill-${dto.channelSlug}` },
+      { channelSlug: dto.channelSlug, dryRun: Boolean(dto.dryRun) },
+      {
+        jobId: `fill-${dto.channelSlug}`,
+        repeat: { every: 60 * 60 * 1000 },
+      } as never,
     );
   }
 

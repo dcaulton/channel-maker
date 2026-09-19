@@ -143,8 +143,11 @@ function parseItem(item: unknown, index: number): WindowedSourceItem {
     title: raw.title,
     seriesTitle:
       typeof raw.seriesTitle === 'string' ? raw.seriesTitle : undefined,
-    seriesTitles:
-      typeof raw.seriesTitles === 'object' ? raw.seriesTitles : undefined,
+    seriesTitles: Array.isArray(raw.seriesTitles)
+      ? (raw.seriesTitles as unknown[]).filter(
+          (name): name is string => typeof name === 'string',
+        )
+      : undefined,
     overflow: overflow,
     slateTitle: typeof raw.slateTitle === 'string' ? raw.slateTitle : undefined,
   };

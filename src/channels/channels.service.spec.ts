@@ -18,6 +18,7 @@ describe('ChannelsService', () => {
       delete: jest.Mock;
     };
   };
+  let scheduler: { ensureCoverage: jest.Mock };
 
   beforeEach(() => {
     prisma = {
@@ -33,7 +34,13 @@ describe('ChannelsService', () => {
         findFirst: jest.fn(),
       },
     };
-    service = new ChannelsService(prisma as unknown as PrismaService);
+    scheduler = {
+      ensureCoverage: jest.fn().mockResolvedValue(undefined),
+    };
+    service = new ChannelsService(
+      prisma as unknown as PrismaService,
+      scheduler as never,
+    );
   });
 
   it('creates a channel', async () => {
@@ -91,18 +98,32 @@ describe('ChannelsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('findNow queries overlapping slot', () => {
+  it('findNow queries overlapping slot', async () => {
+    const at = new Date('2026-08-26T12:00:00.000Z');
     prisma.channel.findUnique.mockResolvedValue({
       id: 'ch1',
+      name: 'Test',
+      slug: 'test',
       slots: [],
       _count: { slots: 0 },
     });
-    prisma.scheduleSlot = {
-      findFirst: jest.fn().mockResolvedValue({ id: 'slot1' }),
-      findMany: jest.fn(),
-    };
+    prisma.scheduleSlot.findFirst.mockResolvedValue({ id: 'slot1' });
 
-    // If your mock only has channel.*, extend the prisma mock with scheduleSlot
+    await expect(service.findNow('ch1', at)).resolves.toEqual({ id: 'slot1' });
+
+    expect(scheduler.ensureCoverage).toHaveBeenCalledWith(
+      'ch1',
+      at,
+      expect.any(Date),
+    );
+    expect(prisma.scheduleSlot.findFirst).toHaveBeenCalledWith({
+      where: {
+        channelId: 'ch1',
+        startsAt: { lte: at },
+        endsAt: { gt: at },
+      },
+      include: { mediaAsset: { include: { work: true } } },
+    });
   });
 
   describe('schedule queries', () => {

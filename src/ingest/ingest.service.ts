@@ -15,8 +15,9 @@ export type IngestResult = {
   upserted: number;
   linked: number;
   skipped: number;
+  skippedReasons?: number;
   dryRun: boolean;
-  parsedCounts: number;
+  parsedCounts: Record<string, number>;
   unaliased: object;
 };
 
@@ -43,18 +44,19 @@ export class IngestService {
     let upserted = 0;
     let linked = 0;
     let skipped = 0;
+    const parsedCounts: Record<string, number> = {};
+    const unaliased = new Set<string>();
+    const skippedReasons: { path: string; reason: string }[] = [];
+    const aliasValues = new Set(
+      Object.values(spookyStoriesParseProfile.aliases ?? {}),
+    );
 
     for (const filePath of files) {
       const sourceUrl = toSourceUrl(filePath, root, publicBase);
       const durationSec = await probeDurationSec(filePath);
       const title = filePath.split(/[/\\]/).pop() ?? sourceUrl;
       const parsed = parseMediaFilename(filePath, spookyStoriesParseProfile);
-      const parsedCounts: Record<string, number> = {};
-      const unaliased = new Set<string>();
-      const skippedReasons: { path: string; reason: string }[] = [];
-      const aliasValues = new Set(
-        Object.values(spookyStoriesParseProfile.aliases ?? {}),
-      );
+
       if (parsed.kind === 'skip') {
         skippedReasons.push({ path: filePath, reason: parsed.reason });
       } else if (parsed.kind === 'episode') {
@@ -119,11 +121,11 @@ export class IngestService {
       scanned: files.length,
       upserted,
       linked,
-      skipped,
       dryRun,
-      parsedCounts: parsedCounts,
+      skipped,
+      skippedReasons: skippedReasons.length,
+      parsedCounts,
       unaliased: [...unaliased],
-      skipped: skippedReasons.length,
     };
   }
 
