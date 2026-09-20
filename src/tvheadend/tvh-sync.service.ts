@@ -5,8 +5,9 @@ import {
   tvhClientFromEnv,
   tvhStreamBaseFromEnv,
   tvhStreamUrl,
+  tvhDvrUrl,
 } from './tvh.client';
-import { TvhSyncResult } from './tvh.types';
+import { TvhSyncResult, TvhDvrEntry, TvhDvrSyncResult } from './tvh.types';
 
 @Injectable()
 export class TvhSyncService {
@@ -155,6 +156,88 @@ export class TvhSyncService {
         sourceType: 'http-live',
         workId: work.id,
         description: `tvh ${channel.uuid}`,
+      },
+    });
+  }
+
+  async syncDvr(options: { dryRun?: boolean } = {}): Promise<TvhDvrSyncResult> {
+    const dryRun = options.dryRun ?? false;
+    const client = tvhClientFromEnv();
+    const streamBase = tvhStreamBaseFromEnv();
+    const recordings = await client.listFinishedRecordings();
+    const summarized = recordings.map((row) => ({
+      title: row.title,
+      uuid: row.uuid,
+      sourceUrl: tvhDvrUrl(streamBase, row.uuid),
+    }));
+
+    let upserted = 0;
+    if (!dryRun) {
+      for (const row of recordings) {
+        await this.upsertDvr(row, tvhDvrUrl(streamBase, row.uuid));
+        upserted += 1;
+      }
+    }
+
+    this.logger.log(
+      { fetched: recordings.length, upserted, dryRun },
+      'tvh dvr',
+    );
+    return {
+      fetched: recordings.length,
+      upserted,
+      dryRun,
+      recordings: summarized,
+    };
+  }
+
+  private async upsertDvr(row: TvhDvrEntry, sourceUrl: string) {
+    const externalIds = { tvhDvrUuid: row.uuid } as Prisma.InputJsonValue;
+    let work = await this.prisma.work.findFirst({
+      where: {
+        kind: 'movie',
+        externalIds: { path: ['tvhDvrUuid'], equals: row.uuid },
+      },
+    });
+    if (!work) {
+      work = await this.prisma.work.findFirst({
+        where: { kind: 'movie', title: row.title },
+      });
+    }
+    if (!work) {
+      work = await this.prisma.work.create({
+        data: {
+          kind: 'movie',
+          title: row.title,
+          synopsis: row.channelName
+            ? `TVH recording from ${row.channelName}`
+            : 'TVH recording',
+          externalIds,
+        },
+      });
+    } else {
+      work = await this.prisma.work.update({
+        where: { id: work.id },
+        data: { externalIds },
+      });
+    }
+
+    await this.prisma.mediaAsset.upsert({
+      where: { sourceUrl },
+      update: {
+        workId: work.id,
+        title: row.title,
+        sourceType: 'tvh-dvr',
+        durationSec: row.durationSec,
+        description: row.uuid,
+      },
+      create: {
+        title: row.title,
+        sourceUrl,
+        sourceType: 'tvh-dvr',
+        durationSec: row.durationSec,
+        description: row.uuid,
+        workId: work.id,
       },
     });
   }

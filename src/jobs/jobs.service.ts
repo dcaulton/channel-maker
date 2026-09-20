@@ -7,11 +7,13 @@ import {
   JOB_INGEST,
   JOB_LLM_STUB,
   JOB_TVH_SYNC,
+  JOB_TVH_DVR_SYNC,
 } from './jobs.constants';
 import { EnqueueIngestDto } from './dto/enqueue-ingest.dto';
 import { EnqueueLlmDto } from './dto/enqueue-llm.dto';
 import { EnqueueFillDto } from './dto/enqueue-fill.dto';
 import { EnqueueTvhSyncDto } from './dto/enqueue-tvh-sync.dto';
+import { EnqueueTvhDvrSyncDto } from './dto/enqueue-tvh-dvr-sync.dto';
 
 @Injectable()
 export class JobsService {
@@ -56,6 +58,14 @@ export class JobsService {
   enqueueTvhSync(dto: EnqueueTvhSyncDto) {
     return this.background.add(
       JOB_TVH_SYNC,
+      { dryRun: dto.dryRun ?? false },
+      { removeOnComplete: 50, removeOnFail: 50 },
+    );
+  }
+
+  enqueueTvhDvrSync(dto: EnqueueTvhDvrSyncDto) {
+    return this.background.add(
+      JOB_TVH_DVR_SYNC,
       { dryRun: dto.dryRun ?? false },
       { removeOnComplete: 50, removeOnFail: 50 },
     );

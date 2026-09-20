@@ -12,6 +12,7 @@ import {
   JOB_INGEST,
   JOB_LLM_STUB,
   JOB_TVH_SYNC,
+  JOB_TVH_DVR_SYNC,
 } from './jobs.constants';
 
 function sleep(ms: number): Promise<void> {
@@ -45,6 +46,13 @@ export class JobsProcessor extends WorkerHost {
         dryRun: Boolean(job.data.dryRun),
       });
       this.events.emit(EVENT_TVH_COMPLETED, { jobId: job.id, ...result });
+      return result;
+    }
+    if (job.name === JOB_TVH_DVR_SYNC) {
+      const result = await this.tvhSync.syncDvr({
+        dryRun: Boolean(job.data.dryRun),
+      });
+      this.logger.log(result, 'tvh dvr completed');
       return result;
     }
     throw new Error(`Unknown job name: ${job.name}`);

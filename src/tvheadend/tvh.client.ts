@@ -1,4 +1,5 @@
 import { TvhChannel } from './tvh.types';
+import { TvhDvrEntry } from './tvh.types';
 
 export function tvhStreamUrl(base: string, uuid: string): string {
   const trimmed = base.replace(/\/$/, '');
@@ -54,6 +55,32 @@ export class TvhClient {
         enabled: row.enabled !== false,
       }));
   }
+
+  async listFinishedRecordings(limit = 500): Promise<TvhDvrEntry[]> {
+    const url = new URL('/api/dvr/entry/grid_finished', this.baseUrl);
+    url.searchParams.set('limit', String(limit));
+    url.searchParams.set('start', '0');
+    const response = await fetch(url, {
+      headers: {
+        Authorization:
+          'Basic ' +
+          Buffer.from(`${this.username}:${this.password}`).toString('base64'),
+      },
+      signal: AbortSignal.timeout(20_000),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(
+        `TVH dvr/grid_finished failed: ${response.status} ${response.statusText}`,
+      );
+    }
+    const body = JSON.parse(text) as { entries?: unknown[] };
+    const entries = Array.isArray(body.entries) ? body.entries : [];
+
+    return entries
+      .map((row) => mapTvhDvrRow(row as Parameters<typeof mapTvhDvrRow>[0]))
+      .filter((row): row is TvhDvrEntry => row !== null);
+  }
 }
 
 export function tvhClientFromEnv(): TvhClient {
@@ -72,4 +99,51 @@ export function tvhStreamBaseFromEnv(): string {
     process.env.TVH_URL ??
     'http://127.0.0.1:9981'
   );
+}
+
+export function tvhDvrUrl(base: string, uuid: string): string {
+  return `${base.replace(/\/$/, '')}/dvrfile/${uuid}`;
+}
+
+export function mapTvhDvrRow(row: {
+  uuid?: unknown;
+  disp_title?: unknown;
+  title?: unknown;
+  disp_subtitle?: unknown;
+  channelname?: unknown;
+  start?: unknown;
+  stop?: number;
+}): TvhDvrEntry | null {
+  if (typeof row.uuid !== 'string' || row.uuid.length === 0) {
+    return null;
+  }
+  const title = displayTitle(row.disp_title) ?? displayTitle(row.title);
+  if (!title) {
+    return null;
+  }
+  const start = typeof row.start === 'number' ? row.start : 0;
+  const stop = typeof row.stop === 'number' ? row.stop : start;
+  return {
+    uuid: row.uuid,
+    title,
+    subtitle: displayTitle(row.disp_subtitle),
+    channelName:
+      typeof row.channelname === 'string' ? row.channelname : undefined,
+    start,
+    stop,
+    durationSec: Math.max(60, stop - start),
+  };
+}
+
+function displayTitle(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.length > 0) {
+    return value;
+  }
+  if (value && typeof value === 'object') {
+    const first = Object.values(value as Record<string, unknown>).find(
+      (part) => typeof part === 'string' && part.length > 0,
+    );
+    return typeof first === 'string' ? first : undefined;
+  }
+  return undefined;
 }

@@ -4,6 +4,7 @@ import { JobsService } from './jobs.service';
 import { EnqueueIngestDto } from './dto/enqueue-ingest.dto';
 import { EnqueueLlmDto } from './dto/enqueue-llm.dto';
 import { EnqueueTvhSyncDto } from './dto/enqueue-tvh-sync.dto';
+import { EnqueueTvhDvrSyncDto } from './dto/enqueue-tvh-dvr-sync.dto';
 
 @ApiTags('jobs')
 @Controller('jobs')
@@ -30,6 +31,13 @@ export class JobsController {
   @ApiOperation({ summary: 'Discover TVHeadend channels into Works/assets' })
   async tvhSync(@Body() dto: EnqueueTvhSyncDto) {
     const job = await this.jobsService.enqueueTvhSync(dto);
+    return { id: job.id, name: job.name, queue: job.queueName };
+  }
+
+  @Post('tvh-dvr-sync')
+  @ApiOperation({ summary: 'Discover TVHeadend recordings into Works/assets' })
+  async tvhDvrSync(@Body() dto: EnqueueTvhDvrSyncDto) {
+    const job = await this.jobsService.enqueueTvhDvrSync(dto);
     return { id: job.id, name: job.name, queue: job.queueName };
   }
 }

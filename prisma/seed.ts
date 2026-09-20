@@ -74,6 +74,7 @@ async function main() {
   await addDaypartLab(prisma);
   await addSpookyRules(prisma);
   await addNoProgrammingSlate(prisma);
+  await addDvrAssets(prisma);
 
   console.log('Seed complete:', {
     channelId: channel.id,
@@ -115,6 +116,67 @@ async function addNoProgrammingSlate(prisma: PrismaClient) {
       workId: noProgramming.id,
     },
   });
+}
+
+async function addDvrAssets(prisma: PrismaClient) {
+  const triple = await prisma.channel.upsert({
+    where: { slug: 'triple-source' },
+    update: {},
+    create: {
+      name: 'Triple source',
+      slug: 'triple-source',
+      description: 'Live TVH + NAS file + TVH DVR in one hour',
+    },
+  });
+
+  const live = await prisma.mediaAsset.findFirst({
+    where: { sourceType: 'http-live', title: { contains: 'METV' } },
+  });
+  const file = await prisma.mediaAsset.findFirst({
+    where: { sourceType: 'file', durationSec: { not: null } },
+  });
+  const dvr = await prisma.mediaAsset.findFirst({
+    where: { sourceType: 'tvh-dvr' },
+  });
+
+  const t0 = new Date();
+  t0.setSeconds(0, 0);
+  const plus = (m: number) => new Date(t0.getTime() + m * 60_000);
+
+  await prisma.scheduleSlot.deleteMany({
+    where: { channelId: triple.id, origin: 'seed' },
+  });
+
+  const rows = [
+    live && {
+      channelId: triple.id,
+      mediaAssetId: live.id,
+      title: `LIVE ${live.title}`,
+      startsAt: t0,
+      endsAt: plus(20),
+      origin: 'seed',
+    },
+    file && {
+      channelId: triple.id,
+      mediaAssetId: file.id,
+      title: `FILE ${file.title}`,
+      startsAt: plus(20),
+      endsAt: plus(40),
+      origin: 'seed',
+    },
+    dvr && {
+      channelId: triple.id,
+      mediaAssetId: dvr.id,
+      title: `DVR ${dvr.title}`,
+      startsAt: plus(40),
+      endsAt: plus(60),
+      origin: 'seed',
+    },
+  ].filter(Boolean);
+
+  if (rows.length) {
+    await prisma.scheduleSlot.createMany({ data: rows as never });
+  }
 }
 
 async function addTvStreamRules(prisma: PrismaClient) {
