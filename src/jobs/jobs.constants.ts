@@ -14,3 +14,6 @@ export const JOB_FILL_SCHEDULE = 'fill-schedule';
 export const EVENT_FILL_COMPLETED = 'fill.completed';
 
 export const JOB_TVH_DVR_SYNC = 'tvh-dvr-sync';
+
+export const JOB_RENDER_SLATE = 'render-slate';
+export const EVENT_SLATE_COMPLETED = 'slate.completed';

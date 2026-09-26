@@ -8,12 +8,14 @@ import {
   JOB_LLM_STUB,
   JOB_TVH_SYNC,
   JOB_TVH_DVR_SYNC,
+  JOB_RENDER_SLATE,
 } from './jobs.constants';
 import { EnqueueIngestDto } from './dto/enqueue-ingest.dto';
 import { EnqueueLlmDto } from './dto/enqueue-llm.dto';
 import { EnqueueFillDto } from './dto/enqueue-fill.dto';
 import { EnqueueTvhSyncDto } from './dto/enqueue-tvh-sync.dto';
 import { EnqueueTvhDvrSyncDto } from './dto/enqueue-tvh-dvr-sync.dto';
+import { EnqueueRenderSlateDto } from './dto/enqueue-render-slate.dto';
 
 @Injectable()
 export class JobsService {
@@ -67,6 +69,18 @@ export class JobsService {
     return this.background.add(
       JOB_TVH_DVR_SYNC,
       { dryRun: dto.dryRun ?? false },
+      { removeOnComplete: 50, removeOnFail: 50 },
+    );
+  }
+
+  enqueueRenderSlate(dto: EnqueueRenderSlateDto) {
+    return this.background.add(
+      JOB_RENDER_SLATE,
+      {
+        channelId: dto.channelId,
+        kinds: dto.kinds,
+        look: dto.look ?? 'plain',
+      },
       { removeOnComplete: 50, removeOnFail: 50 },
     );
   }

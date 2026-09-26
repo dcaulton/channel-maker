@@ -4,6 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Job } from 'bullmq';
 import { TvhSyncService } from '../tvheadend/tvh-sync.service';
 import { IngestService } from '../ingest/ingest.service';
+import { RenderSlateService } from '../slates/render-slate.service';
 import {
   BACKGROUND_QUEUE,
   EVENT_INGEST_COMPLETED,
@@ -13,6 +14,8 @@ import {
   JOB_LLM_STUB,
   JOB_TVH_SYNC,
   JOB_TVH_DVR_SYNC,
+  JOB_RENDER_SLATE,
+  EVENT_SLATE_COMPLETED,
 } from './jobs.constants';
 
 function sleep(ms: number): Promise<void> {
@@ -29,6 +32,7 @@ export class JobsProcessor extends WorkerHost {
     private readonly events: EventEmitter2,
     private readonly tvhSync: TvhSyncService,
     private readonly ingest: IngestService,
+    private readonly slates: RenderSlateService,
   ) {
     super();
   }
@@ -53,6 +57,16 @@ export class JobsProcessor extends WorkerHost {
         dryRun: Boolean(job.data.dryRun),
       });
       this.logger.log(result, 'tvh dvr completed');
+      return result;
+    }
+    if (job.name === JOB_RENDER_SLATE) {
+      const result = await this.slates.render({
+        channelId: job.data.channelId,
+        kinds: job.data.kinds,
+        look: job.data.look,
+      });
+      this.events.emit(EVENT_SLATE_COMPLETED, { jobId: job.id, result });
+      this.logger.log({ count: result.length }, 'slates rendered');
       return result;
     }
     throw new Error(`Unknown job name: ${job.name}`);

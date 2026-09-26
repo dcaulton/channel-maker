@@ -11,15 +11,18 @@ describe('JobsProcessor', () => {
   let events: { emit: jest.Mock };
   let ingest: { ingest: jest.Mock };
   let tvhSync: { sync: jest.Mock };
+  let slates: { render: jest.Mock };
 
   beforeEach(() => {
     events = { emit: jest.fn() };
     ingest = { ingest: jest.fn() };
     tvhSync = { sync: jest.fn() };
+    slates = { render: jest.fn().mockResolvedValue([]) };
     processor = new JobsProcessor(
       events as never,
       tvhSync as never,
       ingest as never,
+      slates as never,
     );
   });
 
@@ -78,5 +81,20 @@ describe('JobsProcessor', () => {
     await expect(
       processor.process({ id: 'x', name: 'nope', data: {} } as never),
     ).rejects.toThrow('Unknown job name: nope');
+  });
+
+  it('renders slates', async () => {
+    slates.render.mockResolvedValue([{ kind: 'idle' }]);
+    const job = {
+      id: 's1',
+      name: 'render-slate',
+      data: { channelId: 'ch1', look: 'plain' },
+    };
+    await processor.process(job as never);
+    expect(slates.render).toHaveBeenCalledWith({
+      channelId: 'ch1',
+      kinds: undefined,
+      look: 'plain',
+    });
   });
 });

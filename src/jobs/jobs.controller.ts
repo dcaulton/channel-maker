@@ -5,6 +5,7 @@ import { EnqueueIngestDto } from './dto/enqueue-ingest.dto';
 import { EnqueueLlmDto } from './dto/enqueue-llm.dto';
 import { EnqueueTvhSyncDto } from './dto/enqueue-tvh-sync.dto';
 import { EnqueueTvhDvrSyncDto } from './dto/enqueue-tvh-dvr-sync.dto';
+import { EnqueueRenderSlateDto } from './dto/enqueue-render-slate.dto';
 
 @ApiTags('jobs')
 @Controller('jobs')
@@ -38,6 +39,14 @@ export class JobsController {
   @ApiOperation({ summary: 'Discover TVHeadend recordings into Works/assets' })
   async tvhDvrSync(@Body() dto: EnqueueTvhDvrSyncDto) {
     const job = await this.jobsService.enqueueTvhDvrSync(dto);
+    return { id: job.id, name: job.name, queue: job.queueName };
+  }
+
+  @Post('render-slate')
+  @ApiOperation({ summary: 'Render station slates for a channel onto the NAS' })
+  @ApiCreatedResponse({ description: 'Job queued' })
+  async renderSlate(@Body() dto: EnqueueRenderSlateDto) {
+    const job = await this.jobsService.enqueueRenderSlate(dto);
     return { id: job.id, name: job.name, queue: job.queueName };
   }
 }
