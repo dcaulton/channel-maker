@@ -20,11 +20,18 @@ import {
 import { MediaAssetsService } from './media-assets.service';
 import { CreateMediaAssetDto } from './dto/create-media-asset.dto';
 import { UpdateMediaAssetDto } from './dto/update-media-asset.dto';
+import { BatchLinkDto } from './dto/batch-link.dto';
 
 @ApiTags('media-assets')
 @Controller('media-assets')
 export class MediaAssetsController {
   constructor(private readonly mediaAssetsService: MediaAssetsService) {}
+
+  @Post('batch-link')
+  @ApiOperation({ summary: 'Attach source URLs to existing Works' })
+  batchLink(@Body() dto: BatchLinkDto) {
+    return this.mediaAssetsService.batchLink(dto);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create a media asset' })

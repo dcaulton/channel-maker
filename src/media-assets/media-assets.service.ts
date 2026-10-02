@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMediaAssetDto } from './dto/create-media-asset.dto';
 import { UpdateMediaAssetDto } from './dto/update-media-asset.dto';
+import { BatchLinkDto } from './dto/batch-link.dto';
 
 function isUniqueConflict(error: unknown): boolean {
   return (
@@ -126,5 +127,37 @@ export class MediaAssetsService {
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.mediaAsset.delete({ where: { id } });
+  }
+
+  async batchLink(dto: BatchLinkDto) {
+    const upserted: string[] = [];
+    for (const item of dto.items) {
+      const work = await this.prisma.work.findUnique({
+        where: { id: item.workId },
+      });
+      if (!work) {
+        continue;
+      }
+      const asset = await this.prisma.mediaAsset.upsert({
+        where: { sourceUrl: item.sourceUrl },
+        update: {
+          workId: work.id,
+          durationSec: item.durationSec,
+          description: item.description,
+          sourceType: item.sourceType ?? 'file',
+          title: work.title,
+        },
+        create: {
+          title: work.title,
+          sourceUrl: item.sourceUrl,
+          sourceType: item.sourceType ?? 'file',
+          durationSec: item.durationSec,
+          description: item.description,
+          workId: work.id,
+        },
+      });
+      upserted.push(asset.id);
+    }
+    return { upserted: upserted.length, ids: upserted };
   }
 }

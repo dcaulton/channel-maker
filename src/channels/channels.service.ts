@@ -11,6 +11,10 @@ import { Prisma } from '@prisma/client';
 import { buildM3u } from './playlist.util';
 import { DEFAULT_FILL_HORIZON_MS } from '../scheduler/log-coverage';
 import { SchedulerService } from '../scheduler/scheduler.service';
+import {
+  seriesTitlesFromPayload,
+  isPlayableUrl,
+} from '../catalog/series-from-payload';
 
 function isUniqueConflict(error: unknown): boolean {
   return (
@@ -136,5 +140,73 @@ export class ChannelsService {
     });
 
     return { body, channelName: channel.name };
+  }
+
+  async catalogGaps(channelId: string) {
+    await this.findOne(channelId);
+
+    const bindings = await this.prisma.channelRuleset.findMany({
+      where: { channelId, isActive: true },
+      include: { ruleset: { include: { rules: true } } },
+    });
+
+    const seriesTitles = [
+      ...new Set(
+        bindings.flatMap((binding) =>
+          binding.ruleset.rules.flatMap((rule) =>
+            seriesTitlesFromPayload(rule.payload),
+          ),
+        ),
+      ),
+    ];
+
+    const works = await this.prisma.work.findMany({
+      where: { seriesTitle: { in: seriesTitles } },
+      include: { assets: true },
+    });
+
+    const missingSeries = seriesTitles.filter(
+      (title) => !works.some((work) => work.seriesTitle === title),
+    );
+
+    const playableBySeries = new Map<string, number>();
+    for (const work of works) {
+      if (work.episode === 0) {
+        continue;
+      }
+      const playable = work.assets.some((asset) =>
+        isPlayableUrl(asset.sourceUrl),
+      );
+      if (playable) {
+        playableBySeries.set(
+          work.seriesTitle ?? '',
+          (playableBySeries.get(work.seriesTitle ?? '') ?? 0) + 1,
+        );
+      }
+    }
+
+    const seriesWithoutPlayable = seriesTitles.filter(
+      (title) => (playableBySeries.get(title) ?? 0) === 0,
+    );
+
+    return {
+      channelId,
+      seriesTitles,
+      missingSeries,
+      seriesWithoutPlayable,
+      worksWithoutPlayable: works
+        .filter(
+          (work) =>
+            work.episode !== 0 &&
+            work.assets.every((asset) => !isPlayableUrl(asset.sourceUrl)),
+        )
+        .map((work) => ({
+          workId: work.id,
+          title: work.title,
+          seriesTitle: work.seriesTitle,
+          season: work.season,
+          episode: work.episode,
+        })),
+    };
   }
 }

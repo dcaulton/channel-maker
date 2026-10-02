@@ -5,12 +5,31 @@ import { Pool } from 'pg';
 import { SchedulerService } from '../src/scheduler/scheduler.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { zonedLocalToUtc } from 'src/scheduler/zoned-time';
+import {
+  PHILOSOPHY_PRIME_SERIES,
+  philosophyPrimeWindows,
+} from '../src/catalog/philosophy-prime';
 
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const adapter = new PrismaPg(pool);
   const prisma = new PrismaClient({ adapter });
 
+  await addClassicMovies(prisma);
+  await addTvStreamRules(prisma);
+  await addDaypartLab(prisma);
+  await addSpookyRules(prisma);
+  await addNoProgrammingSlate(prisma);
+  await addDvrAssets(prisma);
+  await addPhilosophyPrime(prisma);
+
+  console.log('Seed complete:');
+
+  await prisma.$disconnect();
+  await pool.end();
+}
+
+async function addClassicMovies(prisma: PrismaClient) {
   const channel = await prisma.channel.upsert({
     where: { slug: 'classic-movies' },
     update: {},
@@ -69,22 +88,6 @@ async function main() {
       endsAt,
     },
   });
-
-  await addTvStreamRules(prisma);
-  await addDaypartLab(prisma);
-  await addSpookyRules(prisma);
-  await addNoProgrammingSlate(prisma);
-  await addDvrAssets(prisma);
-
-  console.log('Seed complete:', {
-    channelId: channel.id,
-    mediaAssetId: asset.id,
-    workId: work.id,
-    playlist: `http://localhost:3000/channels/${channel.id}/playlist.m3u`,
-  });
-
-  await prisma.$disconnect();
-  await pool.end();
 }
 
 async function addNoProgrammingSlate(prisma: PrismaClient) {
@@ -653,6 +656,93 @@ async function addSpookyRules(prisma: PrismaClient) {
       priority: 0,
     },
   });
+}
+
+async function addPhilosophyPrime(prisma: PrismaClient) {
+  const channel = await prisma.channel.upsert({
+    where: { slug: 'philosophy-prime' },
+    update: {
+      name: 'Philosophy Prime',
+      description: 'Lectures and debates; files attach after purchase',
+    },
+    create: {
+      name: 'Philosophy Prime',
+      slug: 'philosophy-prime',
+      description: 'Lectures and debates; files attach after purchase',
+    },
+  });
+
+  const ruleset = await prisma.ruleset.upsert({
+    where: { slug: 'philosophy-prime-week' },
+    update: {},
+    create: {
+      name: 'Philosophy Prime week',
+      slug: 'philosophy-prime-week',
+      applyMode: 'sequential',
+    },
+  });
+
+  const payload = {
+    timeZone: 'America/Chicago',
+    episodeOrigin: '2026-09-01',
+    fallbackSlateTitle: 'No programming',
+    items: philosophyPrimeWindows,
+  };
+
+  const existing = await prisma.rule.findFirst({
+    where: { rulesetId: ruleset.id, kind: 'windowed-sources' },
+  });
+  if (existing) {
+    await prisma.rule.update({
+      where: { id: existing.id },
+      data: { payload, enabled: true },
+    });
+  } else {
+    await prisma.rule.create({
+      data: {
+        rulesetId: ruleset.id,
+        name: 'Philosophy Prime 8–10pm',
+        kind: 'windowed-sources',
+        scope: 'local',
+        sortOrder: 0,
+        payload,
+      },
+    });
+  }
+
+  await prisma.channelRuleset.upsert({
+    where: {
+      channelId_rulesetId: {
+        channelId: channel.id,
+        rulesetId: ruleset.id,
+      },
+    },
+    update: { isActive: true, priority: 0 },
+    create: {
+      channelId: channel.id,
+      rulesetId: ruleset.id,
+      isActive: true,
+      priority: 0,
+    },
+  });
+
+  for (const row of PHILOSOPHY_PRIME_SERIES) {
+    const found = await prisma.work.findFirst({
+      where: { kind: 'episode', seriesTitle: row.seriesTitle },
+    });
+    if (!found) {
+      await prisma.work.create({
+        data: {
+          kind: 'episode',
+          title: row.seriesTitle,
+          seriesTitle: row.seriesTitle,
+          season: 1,
+          episode: 0,
+          synopsis: 'Catalog heading; real episodes appear at ingest',
+        },
+      });
+    }
+  }
 }
 
 main().catch((e) => {

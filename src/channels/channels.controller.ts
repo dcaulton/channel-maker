@@ -55,6 +55,14 @@ export class ChannelsController {
     return this.channelsService.findAll();
   }
 
+  @Get(':id/catalog-gaps')
+  @ApiOperation({
+    summary: 'Series the clock names that have no playable HTTP/TVH asset',
+  })
+  catalogGaps(@Param('id') id: string) {
+    return this.channelsService.catalogGaps(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a channel by id (includes schedule slots)' })
   @ApiOkResponse({ description: 'Channel found' })

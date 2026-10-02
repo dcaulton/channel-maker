@@ -8,6 +8,15 @@ import {
 import { probeDurationSec } from './probe-duration';
 import { spookyStoriesParseProfile } from './profiles/spooky-stories';
 import { toSourceUrl, walkMedia } from './walk-media';
+import { philosophyPrimeParseProfile } from './profiles/philosophy-prime';
+
+function profileFor(root: string, profileName?: string) {
+  const blob = `${profileName ?? ''} ${root}`.toLowerCase();
+  if (blob.includes('philosoph')) {
+    return philosophyPrimeParseProfile;
+  }
+  return spookyStoriesParseProfile;
+}
 
 export type IngestResult = {
   root: string;
@@ -31,6 +40,7 @@ export class IngestService {
     root: string;
     dryRun?: boolean;
     publicBase?: string;
+    profile?: string;
   }): Promise<IngestResult> {
     const dryRun = options.dryRun ?? true;
     const publicBase =
@@ -55,6 +65,16 @@ export class IngestService {
       const sourceUrl = toSourceUrl(filePath, root, publicBase);
       const durationSec = await probeDurationSec(filePath);
       const title = filePath.split(/[/\\]/).pop() ?? sourceUrl;
+      const profile = profileFor(options.root, options.profile);
+      this.logger.log(
+        {
+          profile:
+            profile === philosophyPrimeParseProfile
+              ? 'philosophy-prime'
+              : 'spooky',
+        },
+        'parse profile',
+      );
       const parsed = parseMediaFilename(filePath, spookyStoriesParseProfile);
 
       if (parsed.kind === 'skip') {

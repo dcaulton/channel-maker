@@ -1,7 +1,15 @@
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 
-const EXTENSIONS = new Set(['.mkv', '.mp4', '.m4v', '.avi', '.ts', '.m2ts']);
+const EXTENSIONS = new Set([
+  '.mkv',
+  '.mp4',
+  '.m4v',
+  '.avi',
+  '.ts',
+  '.m2ts',
+  '.webm',
+]);
 
 export async function walkMedia(root: string): Promise<string[]> {
   const out: string[] = [];
