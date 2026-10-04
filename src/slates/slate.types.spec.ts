@@ -10,15 +10,25 @@ describe('slate break template', () => {
     ]);
   });
 
-  it('points each card at a wav under slates/audio', () => {
+  it('points each card at a wav in the app data directory', () => {
     for (const card of DEFAULT_BREAK.cards) {
-      expect(card.bedPath).toMatch(/\/slates\/audio\/[a-d]\.wav$/);
+      expect(card.bedPath).toMatch(/data\/slates\/audio\/[a-d]\.wav$/);
+      expect(card.imagePath).toMatch(/data\/slates\/images\/.+\.png$/);
     }
   });
 
   it('keeps idle on its own bed', () => {
-    expect(IDLE_BED).toBe('/mnt/nas/videos/slates/audio/d.wav');
-    expect(SLATE_KINDS).toContain('idle');
+    expect(IDLE_BED).toMatch(/data\/slates\/audio\/d\.wav$/);
+    expect(SLATE_KINDS).toEqual([
+      'station-id',
+      'weather',
+      'upcoming',
+      'idle',
+      'thought',
+      'trivia',
+      'commercial',
+      'seasonal',
+    ]);
   });
 
   it('uses 8s idents and 12s weather/upcoming', () => {
@@ -29,5 +39,9 @@ describe('slate break template', () => {
     expect(
       DEFAULT_BREAK.cards.find((card) => card.kind === 'weather')?.durationSec,
     ).toBe(12);
+  });
+
+  it('leaves the renderer empty so the basic object is used', () => {
+    expect(DEFAULT_BREAK.renderer).toBe('');
   });
 });

@@ -4,14 +4,16 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { PrismaService } from '../prisma/prisma.service';
+import { decodeSpec } from './slate-spec';
+import { buildSlateSpec } from './slate-spec';
+import { resolveRenderer } from './renderers/registry';
 import {
-  DEFAULT_BREAK,
   SLATE_KINDS,
-  IDLE_BED,
+  slateWorkTitle,
   type RenderedSlate,
   type RenderSlateJob,
   type SlateKind,
-  type SlateLook,
+  type SlateSpec,
 } from './slate.types';
 
 const execFileAsync = promisify(execFile);
@@ -23,11 +25,32 @@ export class RenderSlateService {
   constructor(private readonly prisma: PrismaService) {}
 
   async render(job: RenderSlateJob): Promise<RenderedSlate[]> {
+    return this.ensureForLog({
+      channelId: job.channelId,
+      kinds: job.kinds,
+      renderer: job.renderer ?? job.look,
+      upcomingTitles: job.upcomingTitles,
+      force: job.force ?? true,
+    });
+  }
+
+  /**
+   * Called while the channel log is built. Time-varying cards rebuild when
+   * their freshness bucket no longer matches the spec embedded in the mp4.
+   */
+  async ensureForLog(input: {
+    channelId: string;
+    kinds?: SlateKind[];
+    renderer?: string;
+    upcomingTitles?: string[];
+    force?: boolean;
+    now?: Date;
+  }): Promise<RenderedSlate[]> {
     const channel = await this.prisma.channel.findUnique({
-      where: { id: job.channelId },
+      where: { id: input.channelId },
     });
     if (!channel) {
-      throw new NotFoundException(`Channel ${job.channelId} not found`);
+      throw new NotFoundException(`Channel ${input.channelId} not found`);
     }
 
     const nasRoot = process.env.NAS_INGEST_ROOT ?? '/mnt/nas/videos';
@@ -37,64 +60,56 @@ export class RenderSlateService {
     const dir = path.join(nasRoot, 'slates', channel.id);
     await mkdir(dir, { recursive: true });
 
-    const kinds = job.kinds?.length ? job.kinds : [...SLATE_KINDS];
-    const look: SlateLook = job.look ?? 'plain';
+    const kinds = input.kinds?.length ? input.kinds : [...SLATE_KINDS];
     const upcoming =
-      job.upcomingTitles ?? (await this.loadUpcoming(channel.id));
-
+      input.upcomingTitles ?? (await this.loadUpcoming(channel.id));
+    const now = input.now ?? new Date();
     const out: RenderedSlate[] = [];
+
     for (const kind of kinds) {
-      const lines = this.copyFor(kind, channel.name, upcoming);
-      const card = DEFAULT_BREAK.cards.find((c) => c.kind === kind);
-      const durationSec = kind === 'idle' ? 12 : (card?.durationSec ?? 12);
-      const bedPath = kind === 'idle' ? IDLE_BED : (card?.bedPath ?? null);
+      const spec = await buildSlateSpec({
+        kind,
+        channelId: channel.id,
+        channelName: channel.name,
+        renderer: input.renderer,
+        upcomingTitles: upcoming,
+        now,
+      });
       const filePath = path.join(dir, `${kind}.mp4`);
-      await this.renderPlainCard(filePath, lines, durationSec, look, bedPath);
+      const current = input.force ? null : await this.readEmbedded(filePath);
+      const rebuilt = input.force || !current || current.bucket !== spec.bucket;
+      if (rebuilt) {
+        const renderer = resolveRenderer(spec.renderer);
+        await renderer.render(spec, filePath);
+      }
       const sourceUrl = `${publicBase}/slates/${channel.id}/${kind}.mp4`;
-      await this.upsertSlateAsset(kind, sourceUrl, durationSec);
+      await this.upsertSlateAsset(kind, sourceUrl, spec.durationSec);
       out.push({
         kind,
         filePath,
         sourceUrl,
-        durationSec,
-        stubbed: kind === 'weather' || look === 'vhs',
+        durationSec: spec.durationSec,
+        rebuilt,
+        renderer: spec.renderer || 'basic',
       });
     }
     this.logger.log(
-      { channelId: channel.id, count: out.length },
-      'slates rendered',
+      {
+        channelId: channel.id,
+        rebuilt: out.filter((card) => card.rebuilt).length,
+      },
+      'slates ensured',
     );
     return out;
   }
 
-  private copyFor(
-    kind: SlateKind,
-    channelName: string,
-    upcoming: string[],
-  ): string[] {
-    switch (kind) {
-      case 'station-id':
-        return [channelName.toUpperCase(), 'CHANNEL-MAKER'];
-      case 'weather':
-        // stub: later pull a real forecast + Brule-grade copy
-        return [channelName, 'WEATHER', 'TONIGHT: DARK', '(stub)'];
-      case 'upcoming':
-        return [
-          'COMING UP',
-          ...upcoming.slice(0, 3).map((title, i) => `${i + 1}. ${title}`),
-        ];
-      case 'idle':
-        return [channelName.toUpperCase(), 'NO PROGRAMMING'];
-    }
-  }
-
   private async loadUpcoming(channelId: string): Promise<string[]> {
-    const now = new Date();
     const slots = await this.prisma.scheduleSlot.findMany({
       where: {
         channelId,
-        startsAt: { gte: now },
+        startsAt: { gte: new Date() },
         title: { not: 'No programming' },
+        NOT: { title: { in: [...SLATE_KINDS] } },
       },
       orderBy: { startsAt: 'asc' },
       take: 6,
@@ -102,67 +117,23 @@ export class RenderSlateService {
     return slots.map((slot) => slot.title);
   }
 
-  private async renderPlainCard(
-    filePath: string,
-    lines: string[],
-    durationSec: number,
-    look: SlateLook,
-    bedPath?: string | null,
-  ): Promise<void> {
-    const escaped = lines
-      .map((line) => line.replace(/[:\\'[\]]/g, ' ').slice(0, 48))
-      .filter(Boolean);
-    const filters = escaped.map((line, i) => {
-      const y = 420 + i * 80;
-      return `drawtext=text='${line}':fontcolor=white:fontsize=42:x=(w-text_w)/2:y=${y}`;
-    });
-    if (look === 'vhs') {
-      this.logger.debug('vhs look stubbed; rendering plain');
+  private async readEmbedded(filePath: string): Promise<SlateSpec | null> {
+    try {
+      const { stdout } = await execFileAsync('ffprobe', [
+        '-v',
+        'error',
+        '-show_entries',
+        'format_tags=slate_spec',
+        '-of',
+        'default=nw=1:nk=1',
+        filePath,
+      ]);
+      const encoded = stdout.trim();
+      if (!encoded) return null;
+      return decodeSpec(encoded);
+    } catch {
+      return null;
     }
-    const vf = ['format=yuv420p', ...filters].join(',');
-
-    const args = [
-      '-y',
-      '-f',
-      'lavfi',
-      '-i',
-      `color=c=0x101010:s=1920x1080:d=${durationSec}`,
-    ];
-
-    if (bedPath) {
-      args.push(
-        '-i',
-        bedPath,
-        '-filter_complex',
-        `[1:a]apad=pad_dur=${durationSec},atrim=0:${durationSec},asetpts=PTS-STARTPTS[a]`,
-        '-map',
-        '0:v',
-        '-map',
-        '[a]',
-        '-c:a',
-        'aac',
-        '-ac',
-        '2',
-        '-ar',
-        '48000',
-      );
-    } else {
-      args.push('-an');
-    }
-
-    args.push(
-      '-vf',
-      vf,
-      '-c:v',
-      'libx264',
-      '-pix_fmt',
-      'yuv420p',
-      '-t',
-      String(durationSec),
-      filePath,
-    );
-
-    await execFileAsync('ffmpeg', args);
   }
 
   private async upsertSlateAsset(
@@ -170,7 +141,7 @@ export class RenderSlateService {
     sourceUrl: string,
     durationSec: number,
   ) {
-    const title = kind === 'idle' ? 'No programming' : kind;
+    const title = slateWorkTitle(kind);
     let work = await this.prisma.work.findFirst({
       where: { kind: 'slate', title },
     });

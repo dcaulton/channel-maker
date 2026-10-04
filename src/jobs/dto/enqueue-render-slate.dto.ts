@@ -1,11 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsArray,
-  IsIn,
-  IsOptional,
-  IsString,
-  MinLength,
-} from 'class-validator';
+import { IsArray, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class EnqueueRenderSlateDto {
   @ApiProperty({ example: 'cmtyz2gd900i06rb9wgc7orpw' })
@@ -22,8 +16,20 @@ export class EnqueueRenderSlateDto {
   @IsString({ each: true })
   kinds?: string[];
 
-  @ApiPropertyOptional({ enum: ['plain', 'vhs'], default: 'plain' })
+  @ApiPropertyOptional({
+    description:
+      'Renderer name. Empty, plain, or 0 uses the basic renderer. vhs selects the VHS subclass.',
+    example: 'vhs',
+  })
   @IsOptional()
-  @IsIn(['plain', 'vhs'])
-  look?: 'plain' | 'vhs';
+  @IsString()
+  look?: string;
+
+  @ApiPropertyOptional({
+    description: 'Same field as look. Prefer this name.',
+    example: 'vhs',
+  })
+  @IsOptional()
+  @IsString()
+  renderer?: string;
 }

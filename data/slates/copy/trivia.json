@@ -1,0 +1,22 @@
+[
+  {
+    "match": "justice",
+    "text": "Michael Sandel has taught Justice at Harvard since 1980. The course is famous for packing Sanders Theatre."
+  },
+  {
+    "match": "sandel",
+    "text": "Sandel's Justice lectures were filmed for WGBH and still circulate as the public version of the course."
+  },
+  {
+    "match": "kagan",
+    "text": "Shelly Kagan's Death course at Yale argues that the badness of death is mostly what it takes from you, not a felt experience."
+  },
+  {
+    "match": "magee",
+    "text": "Bryan Magee's BBC interviews put working philosophers on television without a studio audience to laugh them off the point."
+  },
+  {
+    "match": "default",
+    "text": "A lecture cut for television is still a lecture. The slate is just the hallway between rooms."
+  }
+]

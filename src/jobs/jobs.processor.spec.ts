@@ -95,6 +95,7 @@ describe('JobsProcessor', () => {
       channelId: 'ch1',
       kinds: undefined,
       look: 'plain',
+      renderer: 'plain',
     });
   });
 });

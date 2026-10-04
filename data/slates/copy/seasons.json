@@ -1,0 +1,38 @@
+{
+  "1": {
+    "name": "WINTER",
+    "text": "January. The argument gets longer after dark."
+  },
+  "2": { "name": "WINTER", "text": "February. Short month, long thoughts." },
+  "3": {
+    "name": "SPRING",
+    "text": "March. The light comes back before the conclusions do."
+  },
+  "4": {
+    "name": "SPRING",
+    "text": "April. Something outside is growing. The lecture is not."
+  },
+  "5": { "name": "SPRING", "text": "May. Windows open. The soundtrack leaks." },
+  "6": { "name": "SUMMER", "text": "June. Prime time is still daylight." },
+  "7": {
+    "name": "SUMMER",
+    "text": "July. The station refuses to go on vacation."
+  },
+  "8": {
+    "name": "SUMMER",
+    "text": "August. Heat is not an argument, but it acts like one."
+  },
+  "9": { "name": "FALL", "text": "September. School is in. So is the grid." },
+  "10": {
+    "name": "SPOOKY SEASON",
+    "text": "October. The porch light is a thesis."
+  },
+  "11": {
+    "name": "FALL",
+    "text": "November. The days resign before the programs do."
+  },
+  "12": {
+    "name": "WINTER",
+    "text": "December. Cold enough to keep the set on."
+  }
+}

@@ -4,6 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { SchedulerService } from './scheduler.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RenderSlateService } from '../slates/render-slate.service';
 import { Logger } from '@nestjs/common';
 
 const logger = new Logger('run-fill-schedule');
@@ -39,7 +40,11 @@ async function main() {
   const prisma = new PrismaClient({ adapter });
 
   try {
-    const scheduler = new SchedulerService(prisma as unknown as PrismaService);
+    const slates = new RenderSlateService(prisma as unknown as PrismaService);
+    const scheduler = new SchedulerService(
+      prisma as unknown as PrismaService,
+      slates,
+    );
     const result = await scheduler.fillChannel({ channelSlug, dryRun });
     logger.log(
       JSON.stringify(

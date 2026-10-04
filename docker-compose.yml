@@ -45,22 +45,6 @@ services:
     volumes:
       - lgtm_data:/data
 
-  app:
-    build: .
-    container_name: channel-maker-app
-    restart: unless-stopped
-    ports:
-      - '3000:3000'
-    environment:
-      DATABASE_URL: postgresql://channelmaker:channelmaker@postgres:5432/channelmaker?schema=public
-      REDIS_URL: redis://redis:6379
-      PORT: 3000
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
 volumes:
   postgres_data:
   redis_data:

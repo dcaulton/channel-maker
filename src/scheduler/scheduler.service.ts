@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RenderSlateService } from '../slates/render-slate.service';
+import { SLATE_KINDS, slateWorkTitle } from '../slates/slate.types';
 import { type RotateTvStreamItem } from './rotate-tv-streams';
 import { RotateTvStreamsPlanner } from './planners/rotate-tv-streams.planner';
 import { WindowedSourcesPlanner } from './planners/windowed-sources.planner';
@@ -27,7 +29,10 @@ export type FillOptions = {
 export class SchedulerService {
   private readonly planners: Map<string, RulePlanner>;
   private readonly inflight = new Map<string, Promise<void>>();
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly slates?: RenderSlateService,
+  ) {
     this.planners = new Map<string, RulePlanner>([
       ['rotate-tv-streams', new RotateTvStreamsPlanner()],
       ['windowed-sources', new WindowedSourcesPlanner()],
@@ -48,6 +53,10 @@ export class SchedulerService {
     const binding = await this.requireActiveBinding(channel.id);
     const from = options.from ?? new Date();
     const to = options.to ?? new Date(from.getTime() + 24 * 60 * 60 * 1000);
+
+    if (this.slates && !options.dryRun) {
+      await this.slates.ensureForLog({ channelId: channel.id, force: false });
+    }
 
     const ctx = { prisma: this.prisma, from, to };
     const planned: PlannedEngineSlot[] = [];
@@ -87,6 +96,21 @@ export class SchedulerService {
         where: { kind: 'episode', seriesTitle: name },
       });
       preview.push({ seriesTitle: name, episodes: n });
+    }
+
+    if (this.slates && !options.dryRun) {
+      const slateTitles = new Set(
+        SLATE_KINDS.map((kind) => slateWorkTitle(kind)),
+      );
+      const upcomingTitles = planned
+        .map((slot) => slot.title)
+        .filter((title) => !slateTitles.has(title));
+      await this.slates.ensureForLog({
+        channelId: channel.id,
+        kinds: ['upcoming'],
+        upcomingTitles,
+        force: false,
+      });
     }
 
     await this.prisma.scheduleSlot.createMany({

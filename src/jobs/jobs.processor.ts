@@ -64,6 +64,7 @@ export class JobsProcessor extends WorkerHost {
         channelId: job.data.channelId,
         kinds: job.data.kinds,
         look: job.data.look,
+        renderer: job.data.renderer ?? job.data.look,
       });
       this.events.emit(EVENT_SLATE_COMPLETED, { jobId: job.id, result });
       this.logger.log({ count: result.length }, 'slates rendered');
