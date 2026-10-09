@@ -15,11 +15,11 @@ async function main() {
   const adapter = new PrismaPg(pool);
   const prisma = new PrismaClient({ adapter });
 
+  await addNoProgrammingSlate(prisma);
   await addClassicMovies(prisma);
   await addTvStreamRules(prisma);
   await addDaypartLab(prisma);
   await addSpookyRules(prisma);
-  await addNoProgrammingSlate(prisma);
   await addDvrAssets(prisma);
   await addPhilosophyPrime(prisma);
 
@@ -364,28 +364,7 @@ async function addDaypartLab(prisma: PrismaClient) {
     }
   }
 
-  let slateWork = await prisma.work.findFirst({
-    where: { title: 'No programming', kind: 'slate' },
-  });
-  if (!slateWork) {
-    slateWork = await prisma.work.create({
-      data: { title: 'No programming', kind: 'slate' },
-    });
-  }
-  await prisma.mediaAsset.upsert({
-    where: { sourceUrl: 'https://nas.local/slate/no-programming.mp4' },
-    update: { workId: slateWork.id },
-    create: {
-      title: 'No programming',
-      sourceUrl: 'https://nas.local/slate/no-programming.mp4',
-      sourceType: 'file',
-      durationSec: 1,
-      workId: slateWork.id,
-    },
-  });
-
   // WLS live work+asset already created by the TVH seed helper.
-
   const ruleset = await prisma.ruleset.upsert({
     where: { slug: 'wls-showabc-slate' },
     update: {},

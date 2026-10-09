@@ -4,6 +4,7 @@ export type RulePlanContext = {
   prisma: PrismaService;
   from: Date;
   to: Date;
+  channelId?: string;
 };
 
 export type PlannedEngineSlot = {

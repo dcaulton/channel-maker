@@ -58,7 +58,7 @@ export class SchedulerService {
       await this.slates.ensureForLog({ channelId: channel.id, force: false });
     }
 
-    const ctx = { prisma: this.prisma, from, to };
+    const ctx = { prisma: this.prisma, from, to, channelId: channel.id };
     const planned: PlannedEngineSlot[] = [];
 
     for (const rule of binding.ruleset.rules) {

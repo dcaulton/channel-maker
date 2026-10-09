@@ -408,4 +408,44 @@ describe('planWindowedSources seriesTitles', () => {
     });
     expect(planned[0].title).toBe('Creepshow-S01E01');
   });
+
+  it('loops No programming when a series has no playable catalog', () => {
+    const payload = parseWindowedSourcesPayload({
+      timeZone: TZ,
+      episodeOrigin: '2026-09-01',
+      fallbackSlateTitle: 'No programming',
+      items: [
+        {
+          start: '20:00',
+          end: '20:01',
+          days: 'daily',
+          mode: 'episodes',
+          title: 'Men of Ideas',
+          seriesTitle: 'Men of Ideas',
+          overflow: 'slate',
+        },
+      ],
+    });
+    const { from, to } = dayRange('2026-09-01');
+    const planned = planWindowedSources({
+      from,
+      to,
+      payload,
+      liveByTitle: {},
+      episodesBySeries: { 'Men of Ideas': [] },
+      slateByTitle: {
+        'No programming': {
+          ...slateByTitle['No programming'],
+          durationSec: 12,
+        },
+      },
+    });
+    expect(planned.length).toBe(5);
+    expect(planned.every((slot) => slot.title === 'No programming')).toBe(true);
+    const covered =
+      planned[planned.length - 1].endsAt.getTime() -
+      planned[0].startsAt.getTime();
+    expect(covered).toBe(60_000);
+    expect(planned[0].description).toContain('Men of Ideas');
+  });
 });

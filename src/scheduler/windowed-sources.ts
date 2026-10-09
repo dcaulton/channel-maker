@@ -49,6 +49,7 @@ export type SlateRef = {
   workId: string;
   mediaAssetId: string;
   sourceUrl: string;
+  durationSec?: number;
 };
 
 export type PlannedWindowSlot = {
@@ -264,7 +265,13 @@ function planItem(args: {
 
   const catalog = names.flatMap((name) => args.episodesBySeries[name] ?? []);
   if (catalog.length === 0) {
-    throw new Error(`No episode catalog for "${names.join(', ')}"`);
+    return loopNoProgramming({
+      slateByTitle: args.slateByTitle,
+      fallbackSlateTitle: args.fallbackSlateTitle,
+      windowStart: start,
+      windowEnd: end,
+      reason: names.join(', '),
+    });
   }
 
   const seriesTitle = names.join(' + ');
@@ -304,6 +311,43 @@ function planItem(args: {
     slate,
     slateTitle,
   }).slots;
+}
+
+function loopNoProgramming(args: {
+  slateByTitle: Record<string, SlateRef>;
+  fallbackSlateTitle?: string;
+  windowStart: Date;
+  windowEnd: Date;
+  reason: string;
+}): PlannedWindowSlot[] {
+  const title = args.fallbackSlateTitle ?? 'No programming';
+  const slate = args.slateByTitle[title] ?? args.slateByTitle['No programming'];
+  if (!slate) {
+    throw new Error(
+      `No episode catalog for "${args.reason}" and no "${title}" slate to loop`,
+    );
+  }
+  const durationSec =
+    slate.durationSec && slate.durationSec > 0 ? slate.durationSec : 12;
+  const slots: PlannedWindowSlot[] = [];
+  let cursor = args.windowStart;
+  while (cursor < args.windowEnd) {
+    const remainingMs = args.windowEnd.getTime() - cursor.getTime();
+    const endsAt = new Date(
+      cursor.getTime() + Math.min(remainingMs, durationSec * 1000),
+    );
+    slots.push({
+      startsAt: cursor,
+      endsAt,
+      title: slate.title,
+      description: `windowed-sources no catalog "${args.reason}"`,
+      workId: slate.workId,
+      mediaAssetId: slate.mediaAssetId,
+      sourceUrl: slate.sourceUrl,
+    });
+    cursor = endsAt;
+  }
+  return slots;
 }
 
 function runsOnDay(

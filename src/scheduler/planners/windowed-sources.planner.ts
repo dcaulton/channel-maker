@@ -124,9 +124,23 @@ export class WindowedSourcesPlanner implements RulePlanner {
         where: { title, kind: 'slate' },
         include: { assets: { orderBy: { createdAt: 'asc' }, take: 1 } },
       });
-      if (!work?.assets[0]) {
-        throw new Error(`No slate Work+asset for "${title}"`);
+      const assets = (work?.assets ?? []).filter(
+        (item) =>
+          item.sourceUrl !== 'https://nas.local/slate/no-programming.mp4',
+      );
+      const asset = ctx.channelId
+        ? assets.find((item) =>
+            item.sourceUrl.includes(`/slates/${ctx.channelId}/`),
+          )
+        : assets[0];
+      if (!work || !asset) {
+        throw new Error(
+          ctx.channelId
+            ? `No slate "${title}" rendered for channel ${ctx.channelId}`
+            : `No slate Work+asset for "${title}"`,
+        );
       }
+
       out[title] = {
         title: work.title,
         workId: work.id,
