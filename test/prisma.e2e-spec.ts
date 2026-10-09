@@ -7,6 +7,7 @@ import { Wait } from 'testcontainers';
 import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { POSTGRES_IMAGE } from './images';
 import { Pool } from 'pg';
 import { execSync } from 'node:child_process';
 
@@ -17,7 +18,7 @@ describe('Prisma + Postgres (Testcontainers)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    container = await new PostgreSqlContainer('postgres:16-alpine')
+    container = await new PostgreSqlContainer(POSTGRES_IMAGE)
       .withDatabase('channelmaker_test')
       .withUsername('test')
       .withPassword('test')

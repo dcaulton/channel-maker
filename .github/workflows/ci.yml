@@ -42,5 +42,7 @@ jobs:
 
       - name: E2E tests
         run: pnpm test:e2e
-        # GitHub-hosted runners have working Docker; Ryuk is fine here.
-        # Keep the local Fedora workaround only on your machine.
+        env:
+          # Ryuk is pulled from Docker Hub. Skip it on shared runners.
+          # Local Fedora still sets this in test:e2e:local.
+          TESTCONTAINERS_RYUK_DISABLED: 'true'

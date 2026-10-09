@@ -3,13 +3,14 @@ import { Test } from '@nestjs/testing';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { REDIS_IMAGE } from './images';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
   let redis: StartedRedisContainer;
 
   beforeAll(async () => {
-    redis = await new RedisContainer('redis:7-alpine')
+    redis = await new RedisContainer(REDIS_IMAGE)
       .withStartupTimeout(120_000)
       .start();
     process.env.REDIS_URL = redis.getConnectionUrl();
@@ -27,7 +28,7 @@ describe('AppController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
-    await redis.stop();
+    await app?.close();
+    await redis?.stop();
   }, 60_000);
 });
