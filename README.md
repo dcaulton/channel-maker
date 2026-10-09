@@ -71,6 +71,7 @@ pnpm start:dev
 - App: http://localhost:3000
 - Health: http://localhost:3000/health
 - OpenAPI: http://localhost:3000/docs
+- Designer (Next, no API calls yet): http://localhost:3002
 
 ```bash
 pnpm test
@@ -113,3 +114,15 @@ src/jobs/                     BullMQ processor (ingest, tvh-sync, …)
 ```
 
 `fillChannel` only orchestrates. Packing lives in `windowed-sources.ts` / `rotate-tv-streams.ts` so it can be unit-tested without Nest.
+
+## Designer app
+
+`apps/web` is a Next.js App Router app. Nest stays the API on port 3000. Grafana already uses 3001, so the designer uses 3002.
+
+```bash
+pnpm install
+pnpm dev:web
+pnpm test:web
+```
+
+`docker compose --profile ui up web` is the container path. Postgres and Redis do not need that profile. This step does not proxy to Nest and does not share DTOs.

@@ -27,7 +27,10 @@
     "seed": "pnpm exec tsx prisma/seed.ts",
     "fill-schedule": "pnpm exec tsx src/scheduler/run-fill-schedule.ts",
     "prisma:seed": "pnpm exec prisma db seed",
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev:web": "pnpm --filter @channel-maker/web dev",
+    "test:web": "pnpm --filter @channel-maker/web test",
+    "test:web:cov": "pnpm --filter @channel-maker/web test:cov"
   },
   "lint-staged": {
     "*.{ts,js,mjs}": [

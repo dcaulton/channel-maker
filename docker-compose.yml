@@ -45,7 +45,29 @@ services:
     volumes:
       - lgtm_data:/data
 
+  # Designer only. `docker compose up -d` still starts db, redis, and lgtm.
+  # `docker compose --profile ui up web` installs and runs Next on 3002.
+  web:
+    image: node:24-alpine
+    container_name: channel-maker-web
+    working_dir: /app
+    profiles: ['ui']
+    command: >
+      sh -c "corepack enable && corepack prepare pnpm@11 --activate
+      && pnpm install
+      && pnpm --filter @channel-maker/web dev"
+    ports:
+      - '3002:3002'
+    volumes:
+      - .:/app
+      - web_node_modules:/app/node_modules
+      - web_app_node_modules:/app/apps/web/node_modules
+    environment:
+      NEXT_TELEMETRY_DISABLED: '1'
+
 volumes:
   postgres_data:
   redis_data:
   lgtm_data:
+  web_node_modules:
+  web_app_node_modules:

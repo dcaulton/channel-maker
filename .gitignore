@@ -31,3 +31,8 @@ lerna-debug.log*
 .claude/skills/
 .cursor/skills/
 skills-lock.json
+
+# Next app
+.next/
+apps/web/.next/
+apps/web/coverage/
