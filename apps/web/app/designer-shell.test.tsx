@@ -1,7 +1,11 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ChannelListItem } from '@channel-maker/contracts';
 import { DesignerShell } from './designer-shell';
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: () => undefined }),
+}));
 
 const channels: ChannelListItem[] = [
   {

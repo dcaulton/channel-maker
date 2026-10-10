@@ -12,7 +12,7 @@ const rules: Rule[] = [
 describe('RuleList', () => {
   it('names each kind and marks a rule with no planner', () => {
     const html = renderToStaticMarkup(
-      <RuleList rules={rules} selectedId="w" onSelect={() => undefined} onAdd={() => undefined} />,
+      <RuleList rules={rules} selectedId="w" onSelect={() => undefined} onAdd={() => undefined} onDelete={() => undefined} />,
     );
     expect(html).toContain('windowed-sources');
     expect(html).toContain('rotate-tv-streams');

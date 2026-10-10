@@ -5,11 +5,13 @@ export function RuleList({
   selectedId,
   onSelect,
   onAdd,
+  onDelete,
 }: {
   rules: Rule[];
   selectedId: string | null;
   onSelect: (rule: Rule) => void;
   onAdd: () => void;
+  onDelete: (rule: Rule) => void;
 }) {
   return (
     <section className="card" aria-label="Rules">
@@ -34,6 +36,15 @@ export function RuleList({
                   {planned ? '' : ' · no planner'}
                   {rule.enabled ? '' : ' · off'}
                 </span>
+              </button>
+              <button
+                type="button"
+                className="danger"
+                onClick={() => {
+                  if (window.confirm(`Delete ${rule.name}?`)) onDelete(rule);
+                }}
+              >
+                Delete
               </button>
             </li>
           );

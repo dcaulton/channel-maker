@@ -135,3 +135,6 @@ body {
   font-size: 12px;
 }
 .slot-main:hover .tip { display: block; }
+
+.channel-list li { display: flex; flex-wrap: wrap; gap: 4px; }
+.channel-list li > button.channel { flex: 1; }

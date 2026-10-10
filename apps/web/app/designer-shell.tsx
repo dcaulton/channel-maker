@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   assetPageSchema,
   bindingListSchema,
@@ -15,6 +16,7 @@ import {
   type WindowedPayload,
 } from '@channel-maker/contracts';
 import { chicagoDayRange } from './chicago-day';
+import { ChannelList } from './channel-list';
 import { ClockPane } from './clock-pane';
 import { PreviewPane } from './preview-pane';
 import { RuleList } from './rule-list';
@@ -27,6 +29,23 @@ async function readJson(response: Response) {
   return response.json();
 }
 
+function channelListItemFrom(body: {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  isActive: boolean;
+}): ChannelListItem {
+  return {
+    id: body.id,
+    name: body.name,
+    slug: body.slug,
+    description: body.description,
+    isActive: body.isActive,
+    _count: { slots: 0 },
+  };
+}
+
 export function DesignerShell({
   channels,
   error,
@@ -34,6 +53,8 @@ export function DesignerShell({
   channels: ChannelListItem[];
   error: string | null;
 }) {
+  const router = useRouter();
+  const [list, setList] = useState(channels);
   const [selectedId, setSelectedId] = useState(channels[0]?.id ?? null);
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
   const [slotError, setSlotError] = useState<string | null>(null);
@@ -48,10 +69,70 @@ export function DesignerShell({
   const [message, setMessage] = useState<string | null>(null);
   const [addingRule, setAddingRule] = useState(false);
   const [rulesetId, setRulesetId] = useState<string | null>(null);
-  const selected = channels.find((channel) => channel.id === selectedId) ?? null;
+  const selected = list.find((channel) => channel.id === selectedId) ?? null;
   const selectedSlot = slots.find((slot) => slot.id === selectedSlotId) ?? null;
   const selectedRule = rules.find((rule) => rule.id === selectedRuleId) ?? null;
   const day = chicagoDayRange();
+
+  useEffect(() => {
+    setList(channels);
+  }, [channels]);
+
+  async function saveChannel(channel: ChannelListItem) {
+    const response = await fetch(`/nest/channels/${channel.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: channel.name,
+        slug: channel.slug,
+        description: channel.description,
+        isActive: channel.isActive,
+      }),
+    });
+    if (!response.ok) {
+      setSlotError(`Channel save failed: ${response.status}`);
+      return;
+    }
+    setList((current) => current.map((item) => (item.id === channel.id ? channel : item)));
+    router.refresh();
+  }
+
+  async function deleteChannel(id: string) {
+    const response = await fetch(`/nest/channels/${id}`, { method: 'DELETE' });
+    if (!response.ok && response.status !== 204) {
+      setSlotError(`Channel delete failed: ${response.status}`);
+      return;
+    }
+    setList((current) => current.filter((item) => item.id !== id));
+    if (selectedId === id) setSelectedId(null);
+    router.refresh();
+  }
+
+  async function createChannel(input: { name: string; slug: string; description: string }) {
+    const response = await fetch('/nest/channels', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    if (!response.ok) {
+      setSlotError(`Channel create failed: ${response.status}`);
+      return;
+    }
+    const created = channelListItemFrom(await response.json());
+    setList((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name)));
+    setSelectedId(created.id);
+    router.refresh();
+  }
+
+  async function deleteRule(rule: Rule) {
+    const response = await fetch(`/nest/rules/${rule.id}`, { method: 'DELETE' });
+    if (!response.ok && response.status !== 204) {
+      setMessage(`Rule delete failed: ${response.status}`);
+      return;
+    }
+    setRules((current) => current.filter((item) => item.id !== rule.id));
+    if (selectedRuleId === rule.id) setSelectedRuleId(null);
+  }
 
   async function loadLog(channelId: string, signal?: AbortSignal) {
     const { from, to } = chicagoDayRange();
@@ -241,35 +322,24 @@ export function DesignerShell({
     <>
       <header className="top">
         <h1>Channel designer</h1>
-        <span>{channels.length} channels from Nest</span>
+        <span>{list.length} channels from Nest</span>
       </header>
       <main className="board">
-        <section className="card" aria-label="Channels">
-          <h2>Channels</h2>
-          {error ? <p className="note">{error}</p> : null}
-          {channels.length === 0 && !error ? <p className="note">No channels yet.</p> : null}
-          <ul className="channel-list">
-            {channels.map((channel) => (
-              <li key={channel.id}>
-                <button
-                  type="button"
-                  className={channel.id === selectedId ? 'channel selected' : 'channel'}
-                  onClick={() => setSelectedId(channel.id)}
-                >
-                  <strong>{channel.name}</strong>
-                  <span>
-                    {channel.slug} · {channel._count?.slots ?? 0} slots
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <ChannelList
+          channels={list}
+          selectedId={selectedId}
+          error={error}
+          onSelect={setSelectedId}
+          onSave={saveChannel}
+          onDelete={deleteChannel}
+          onCreate={createChannel}
+        />
         <div className="stack">
           <RuleList
             rules={rules}
             selectedId={selectedRuleId}
             onAdd={() => setAddingRule(true)}
+            onDelete={deleteRule}
             onSelect={(rule) => {
               setSelectedRuleId(rule.id);
               setSelectedIndex(null);
