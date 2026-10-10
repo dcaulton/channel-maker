@@ -10,7 +10,7 @@ import { execSync } from 'node:child_process';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { POSTGRES_IMAGE, REDIS_IMAGE } from './images';
-import { PrismaService } from '../src/prisma/prisma.service';
+import { closeNestApp } from './close-app';
 
 type ChannelResponse = {
   id: string;
@@ -69,11 +69,7 @@ describe('Channels + ScheduleSlots (e2e)', () => {
   }, 180_000);
 
   afterAll(async () => {
-    if (app) {
-      const prisma = app.get(PrismaService);
-      await prisma.$disconnect().catch(() => undefined);
-      await app.close();
-    }
+    await closeNestApp(app);
     await container?.stop().catch(() => undefined);
     await redis?.stop().catch(() => undefined);
   });

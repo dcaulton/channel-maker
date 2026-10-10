@@ -4,6 +4,7 @@ import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { REDIS_IMAGE } from './images';
+import { closeNestApp } from './close-app';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
@@ -28,7 +29,7 @@ describe('AppController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app?.close();
+    await closeNestApp(app);
     await redis?.stop();
   }, 60_000);
 });
