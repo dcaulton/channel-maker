@@ -81,3 +81,8 @@ body {
 .channel strong { display: block; font-family: var(--serif); font-size: 18px; }
 .channel span { color: var(--dim); font-family: var(--mono); font-size: 12px; }
 .channel.selected { border-color: var(--line); box-shadow: inset 3px 0 0 var(--air); }
+
+.log { list-style: none; margin: 0; padding: 0; }
+.log .slot { width: 100%; text-align: left; background: transparent; color: inherit; margin-bottom: 8px; }
+.log .when { display: block; color: var(--dim); font-family: var(--mono); font-size: 12px; }
+.log .slot.selected { border-style: solid; box-shadow: inset 3px 0 0 var(--air); }

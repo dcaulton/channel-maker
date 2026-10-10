@@ -137,3 +137,5 @@ pnpm test:web
 pnpm test:contracts
 pnpm dev:web
 ```
+
+The clock pane asks Next for `/nest/channels/:id/schedule`. A rewrite forwards that to Nest. The browser never calls port 3000. Selecting a channel is client state, so this fetch runs after the click.
