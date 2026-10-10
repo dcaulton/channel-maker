@@ -108,3 +108,9 @@ body {
 .actions { display: flex; gap: 8px; }
 
 .player { width: 100%; margin-top: 12px; background: #000; border-radius: 8px; }
+
+.pane-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.add { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: 12px; }
+.slot { display: flex; align-items: flex-start; gap: 8px; }
+.slot-main { flex: 1; text-align: left; background: transparent; color: inherit; border: 0; padding: 0; }
+.danger { color: #f0a0a0; background: transparent; border: 0; }

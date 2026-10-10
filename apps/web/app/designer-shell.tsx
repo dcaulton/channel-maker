@@ -19,7 +19,7 @@ import { ClockPane } from './clock-pane';
 import { PreviewPane } from './preview-pane';
 import { RuleList } from './rule-list';
 import { RuleSummary } from './rule-summary';
-import { RulesetPane } from './ruleset-pane';
+import { RulesetPane, type CopyableRule } from './ruleset-pane';
 
 async function readJson(response: Response) {
   if (!response.ok) throw new Error(`Nest returned ${response.status}`);
@@ -45,6 +45,8 @@ export function DesignerShell({
   const [draft, setDraft] = useState<WindowedItem | null>(null);
   const [hits, setHits] = useState<AssetHit[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [otherRules, setOtherRules] = useState<CopyableRule[]>([]);
+  const [rulesetId, setRulesetId] = useState<string | null>(null);
   const selected = channels.find((channel) => channel.id === selectedId) ?? null;
   const selectedSlot = slots.find((slot) => slot.id === selectedSlotId) ?? null;
   const selectedRule = rules.find((rule) => rule.id === selectedRuleId) ?? null;
@@ -93,11 +95,31 @@ export function DesignerShell({
           ),
         );
         setRules(detail.rules);
+        setRulesetId(detail.id);
         const windowed = detail.rules.find((rule) => rule.kind === 'windowed-sources');
         const first = windowed ?? detail.rules[0] ?? null;
         setSelectedRuleId(first?.id ?? null);
         setPayload(
           windowed ? windowedPayloadSchema.parse(windowed.payload) : null,
+        );
+        const all = (await readJson(
+          await fetch('/nest/rules', { signal: controller.signal }),
+        )) as {
+          id: string;
+          name: string;
+          kind: string;
+          rulesetId: string;
+          ruleset?: { name: string };
+        }[];
+        setOtherRules(
+          all
+            .filter((item) => item.rulesetId !== detail.id)
+            .map((item) => ({
+              id: item.id,
+              name: item.name,
+              kind: item.kind,
+              rulesetName: item.ruleset?.name ?? '',
+            })),
         );
       })
       .catch((cause: unknown) => {
@@ -127,6 +149,61 @@ export function DesignerShell({
     }
     setPayload(next);
     setMessage('Item saved. Generate to rewrite the log.');
+  }
+
+  async function persist(next: WindowedPayload, note: string) {
+    if (!selectedRule) return;
+    const response = await fetch(`/nest/rules/${selectedRule.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ payload: next }),
+    });
+    if (!response.ok) {
+      setMessage(`Save failed: ${response.status}`);
+      return;
+    }
+    setPayload(next);
+    setMessage(note);
+  }
+
+  async function deleteItem(index: number) {
+    if (!payload) return;
+    const items = payload.items.filter((_, i) => i !== index);
+    setSelectedIndex(null);
+    setDraft(null);
+    await persist({ ...payload, items }, 'Item deleted. Generate to rewrite the log.');
+  }
+
+  function addItem(mode: WindowedItem['mode']) {
+    if (!payload) return;
+    const item: WindowedItem = {
+      start: '20:00',
+      end: '22:00',
+      days: 'daily',
+      mode,
+      title: 'New item',
+    };
+    const items = [...payload.items, item];
+    setPayload({ ...payload, items });
+    setSelectedIndex(items.length - 1);
+    setDraft(item);
+    setMessage('New item is local until you save it.');
+  }
+
+  async function copyRule(sourceId: string) {
+    if (!rulesetId) return;
+    const source = await readJson(await fetch(`/nest/rules/${sourceId}`));
+    const response = await fetch('/nest/rules', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        rulesetId,
+        name: source.name,
+        kind: source.kind,
+        payload: source.payload,
+      }),
+    });
+    setMessage(response.ok ? `Copied ${source.name}.` : `Copy failed: ${response.status}`);
   }
 
   async function generate() {
@@ -221,6 +298,10 @@ export function DesignerShell({
               }}
               onSave={saveItem}
               onGenerate={generate}
+              onDelete={deleteItem}
+              onAddItem={addItem}
+              onCopyRule={copyRule}
+              otherRules={otherRules}
             />
           ) : selectedRule ? (
             <RuleSummary rule={selectedRule} />

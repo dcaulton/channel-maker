@@ -11,29 +11,36 @@ const items: WindowedItem[] = [
     mode: 'episodes',
     title: 'Justice',
     seriesTitle: 'Justice',
+    overflow: 'slate',
+    slateTitle: 'No programming',
   },
 ];
 
 describe('RulesetPane', () => {
-  it('lists a windowed item', () => {
+  it('expands a row to its metadata and offers delete', () => {
     const html = renderToStaticMarkup(
       <RulesetPane
         name="philosophy-prime"
         items={items}
-        selectedIndex={null}
-        draft={null}
+        selectedIndex={0}
+        draft={items[0]!}
         hits={[]}
         message={null}
+        otherRules={[{ id: 'r1', name: 'Locals', kind: 'rotate-tv-streams', rulesetName: 'wls' }]}
         onSelect={() => undefined}
         onDraft={() => undefined}
         onSearch={() => undefined}
         onPick={() => undefined}
         onSave={() => undefined}
         onGenerate={() => undefined}
+        onDelete={() => undefined}
+        onAddItem={() => undefined}
+        onCopyRule={() => undefined}
       />,
     );
-    expect(html).toContain('20:00–22:00');
-    expect(html).toContain('Justice');
-    expect(html).toContain('episodes');
+    expect(html).toContain('Delete');
+    expect(html).toContain('No programming');
+    expect(html).toContain('new episodes item');
+    expect(html).toContain('Locals · rotate-tv-streams');
   });
 });

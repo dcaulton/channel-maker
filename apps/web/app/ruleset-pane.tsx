@@ -1,5 +1,16 @@
 import type { AssetHit, WindowedItem } from '@channel-maker/contracts';
 
+export type CopyableRule = {
+  id: string;
+  name: string;
+  kind: string;
+  rulesetName: string;
+};
+
+function daysLabel(days: WindowedItem['days']): string {
+  return days === 'daily' ? 'daily' : days.join(',');
+}
+
 export function RulesetPane({
   name,
   items,
@@ -7,12 +18,16 @@ export function RulesetPane({
   draft,
   hits,
   message,
+  otherRules,
   onSelect,
   onDraft,
   onSearch,
   onPick,
   onSave,
   onGenerate,
+  onDelete,
+  onAddItem,
+  onCopyRule,
 }: {
   name: string | null;
   items: WindowedItem[];
@@ -20,107 +35,180 @@ export function RulesetPane({
   draft: WindowedItem | null;
   hits: AssetHit[];
   message: string | null;
+  otherRules: CopyableRule[];
   onSelect: (index: number) => void;
   onDraft: (item: WindowedItem) => void;
   onSearch: (q: string) => void;
   onPick: (hit: AssetHit) => void;
   onSave: () => void;
   onGenerate: () => void;
+  onDelete: (index: number) => void;
+  onAddItem: (mode: WindowedItem['mode']) => void;
+  onCopyRule: (ruleId: string) => void;
 }) {
   return (
     <section className="card" aria-label="Ruleset">
-      <h2>Ruleset{name ? ` · ${name}` : ''}</h2>
+      <header className="pane-head">
+        <h2>Ruleset{name ? ` · ${name}` : ''}</h2>
+        <label className="add">
+          Add
+          <select
+            value=""
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value.startsWith('item:')) {
+                onAddItem(value.slice(5) as WindowedItem['mode']);
+              } else if (value.startsWith('rule:')) {
+                onCopyRule(value.slice(5));
+              }
+            }}
+          >
+            <option value="">choose</option>
+            <option value="item:episodes">new episodes item</option>
+            <option value="item:live">new live item</option>
+            <option value="item:slate">new slate item</option>
+            {otherRules.map((rule) => (
+              <option key={rule.id} value={`rule:${rule.id}`}>
+                {rule.name} · {rule.kind}
+              </option>
+            ))}
+          </select>
+        </label>
+      </header>
       {items.length === 0 ? <p className="note">No windowed-sources items.</p> : null}
       <ol className="log">
-        {items.map((item, index) => (
-          <li key={`${item.start}-${item.title}-${index}`}>
-            <button
-              type="button"
-              className={index === selectedIndex ? 'slot selected' : 'slot'}
-              onClick={() => onSelect(index)}
-            >
-              <span className="when">
-                {item.start}–{item.end} · {item.mode}
-              </span>
-              <strong>{item.title}</strong>
-              <span>{item.seriesTitle ?? 'no series'}</span>
-            </button>
-          </li>
-        ))}
-      </ol>
-      {draft ? (
-        <form
-          className="edit"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onSave();
-          }}
-        >
-          <label>
-            Start
-            <input
-              value={draft.start}
-              onChange={(event) => onDraft({ ...draft, start: event.target.value })}
-            />
-          </label>
-          <label>
-            End
-            <input
-              value={draft.end}
-              onChange={(event) => onDraft({ ...draft, end: event.target.value })}
-            />
-          </label>
-          <label>
-            Mode
-            <select
-              value={draft.mode}
-              onChange={(event) =>
-                onDraft({ ...draft, mode: event.target.value as WindowedItem['mode'] })
-              }
-            >
-              <option value="episodes">episodes</option>
-              <option value="live">live</option>
-              <option value="slate">slate</option>
-            </select>
-          </label>
-          <label>
-            Title
-            <input
-              value={draft.title}
-              onChange={(event) => onDraft({ ...draft, title: event.target.value })}
-            />
-          </label>
-          <label>
-            Series
-            <input
-              value={draft.seriesTitle ?? ''}
-              onChange={(event) => onDraft({ ...draft, seriesTitle: event.target.value })}
-            />
-          </label>
-          <label>
-            Find a title
-            <input
-              placeholder="justice"
-              onChange={(event) => onSearch(event.target.value)}
-            />
-          </label>
-          <ul className="hits">
-            {hits.map((hit) => (
-              <li key={hit.id}>
-                <button type="button" onClick={() => onPick(hit)}>
-                  {hit.work?.seriesTitle ?? hit.title}
+        {items.map((item, index) => {
+          const open = index === selectedIndex;
+          const shown = open && draft ? draft : item;
+          return (
+            <li key={`${item.start}-${item.title}-${index}`}>
+              <div className={open ? 'slot selected' : 'slot'}>
+                <button type="button" className="slot-main" onClick={() => onSelect(index)}>
+                  <span className="when">
+                    {shown.start}–{shown.end} · {shown.mode} · {daysLabel(shown.days)}
+                  </span>
+                  <strong>{shown.title}</strong>
+                  <span>{shown.seriesTitle ?? shown.seriesTitles?.join(', ') ?? 'no series'}</span>
                 </button>
-              </li>
-            ))}
-          </ul>
-          <div className="actions">
-            <button type="submit">Save item</button>
-            <button type="button" onClick={onGenerate}>
-              Generate log
-            </button>
-          </div>
-        </form>
-      ) : null}
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => {
+                    if (window.confirm(`Delete ${item.title}?`)) onDelete(index);
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+              {open && draft ? (
+                <form
+                  className="edit"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    onSave();
+                  }}
+                >
+                  <label>
+                    Start
+                    <input value={draft.start} onChange={(e) => onDraft({ ...draft, start: e.target.value })} />
+                  </label>
+                  <label>
+                    End
+                    <input value={draft.end} onChange={(e) => onDraft({ ...draft, end: e.target.value })} />
+                  </label>
+                  <label>
+                    Days
+                    <input
+                      value={daysLabel(draft.days)}
+                      onChange={(e) => {
+                        const value = e.target.value.trim();
+                        onDraft({
+                          ...draft,
+                          days: value === 'daily' ? 'daily' : value.split(',').map(Number).filter(Number.isFinite),
+                        });
+                      }}
+                    />
+                  </label>
+                  <label>
+                    Mode
+                    <select
+                      value={draft.mode}
+                      onChange={(e) => onDraft({ ...draft, mode: e.target.value as WindowedItem['mode'] })}
+                    >
+                      <option value="episodes">episodes</option>
+                      <option value="live">live</option>
+                      <option value="slate">slate</option>
+                    </select>
+                  </label>
+                  <label>
+                    Title
+                    <input value={draft.title} onChange={(e) => onDraft({ ...draft, title: e.target.value })} />
+                  </label>
+                  <label>
+                    Series
+                    <input
+                      value={draft.seriesTitle ?? ''}
+                      onChange={(e) => onDraft({ ...draft, seriesTitle: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Series list
+                    <input
+                      value={draft.seriesTitles?.join(', ') ?? ''}
+                      onChange={(e) =>
+                        onDraft({
+                          ...draft,
+                          seriesTitles: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Overflow
+                    <select
+                      value={draft.overflow ?? ''}
+                      onChange={(e) =>
+                        onDraft({
+                          ...draft,
+                          overflow: e.target.value ? (e.target.value as 'slate' | 'carry') : undefined,
+                        })
+                      }
+                    >
+                      <option value="">none</option>
+                      <option value="slate">slate</option>
+                      <option value="carry">carry</option>
+                    </select>
+                  </label>
+                  <label>
+                    Slate title
+                    <input
+                      value={draft.slateTitle ?? ''}
+                      onChange={(e) => onDraft({ ...draft, slateTitle: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Find a title
+                    <input placeholder="justice" onChange={(e) => onSearch(e.target.value)} />
+                  </label>
+                  <ul className="hits">
+                    {hits.map((hit) => (
+                      <li key={hit.id}>
+                        <button type="button" onClick={() => onPick(hit)}>
+                          {hit.work?.seriesTitle ?? hit.title}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="actions">
+                    <button type="submit">Save item</button>
+                    <button type="button" onClick={onGenerate}>Generate log</button>
+                  </div>
+                </form>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
       {message ? <p className="note">{message}</p> : null}
     </section>
   );
