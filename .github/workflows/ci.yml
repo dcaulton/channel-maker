@@ -43,6 +43,18 @@ jobs:
       - name: Designer tests
         run: pnpm test:web
 
+      - name: Pull e2e images
+        run: |
+          pull() {
+            for attempt in 1 2 3; do
+              docker pull "$1" && return
+              sleep 5
+            done
+            exit 1
+          }
+          pull mirror.gcr.io/library/postgres:16-alpine
+          pull mirror.gcr.io/library/redis:7-alpine
+
       - name: E2E tests
         run: pnpm test:e2e
         env:
