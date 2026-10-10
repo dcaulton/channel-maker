@@ -19,7 +19,8 @@ import { ClockPane } from './clock-pane';
 import { PreviewPane } from './preview-pane';
 import { RuleList } from './rule-list';
 import { RuleSummary } from './rule-summary';
-import { RulesetPane, type CopyableRule } from './ruleset-pane';
+import { RulesetPane } from './ruleset-pane';
+import { AddRuleDialog } from './add-rule-dialog';
 
 async function readJson(response: Response) {
   if (!response.ok) throw new Error(`Nest returned ${response.status}`);
@@ -45,7 +46,7 @@ export function DesignerShell({
   const [draft, setDraft] = useState<WindowedItem | null>(null);
   const [hits, setHits] = useState<AssetHit[]>([]);
   const [message, setMessage] = useState<string | null>(null);
-  const [otherRules, setOtherRules] = useState<CopyableRule[]>([]);
+  const [addingRule, setAddingRule] = useState(false);
   const [rulesetId, setRulesetId] = useState<string | null>(null);
   const selected = channels.find((channel) => channel.id === selectedId) ?? null;
   const selectedSlot = slots.find((slot) => slot.id === selectedSlotId) ?? null;
@@ -101,25 +102,6 @@ export function DesignerShell({
         setSelectedRuleId(first?.id ?? null);
         setPayload(
           windowed ? windowedPayloadSchema.parse(windowed.payload) : null,
-        );
-        const all = (await readJson(
-          await fetch('/nest/rules', { signal: controller.signal }),
-        )) as {
-          id: string;
-          name: string;
-          kind: string;
-          rulesetId: string;
-          ruleset?: { name: string };
-        }[];
-        setOtherRules(
-          all
-            .filter((item) => item.rulesetId !== detail.id)
-            .map((item) => ({
-              id: item.id,
-              name: item.name,
-              kind: item.kind,
-              rulesetName: item.ruleset?.name ?? '',
-            })),
         );
       })
       .catch((cause: unknown) => {
@@ -190,20 +172,30 @@ export function DesignerShell({
     setMessage('New item is local until you save it.');
   }
 
-  async function copyRule(sourceId: string) {
+  async function createRule(name: string, kind: 'windowed-sources' | 'rotate-tv-streams') {
     if (!rulesetId) return;
-    const source = await readJson(await fetch(`/nest/rules/${sourceId}`));
+    const payload =
+      kind === 'windowed-sources'
+        ? {
+            timeZone: 'America/Chicago',
+            episodeOrigin: '2026-10-10',
+            items: [{ start: '20:00', end: '22:00', days: 'daily', mode: 'episodes', title: 'New item' }],
+          }
+        : { streamTitles: ['New stream'], slotDurationSec: 7200 };
     const response = await fetch('/nest/rules', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        rulesetId,
-        name: source.name,
-        kind: source.kind,
-        payload: source.payload,
-      }),
+      body: JSON.stringify({ rulesetId, name, kind, payload }),
     });
-    setMessage(response.ok ? `Copied ${source.name}.` : `Copy failed: ${response.status}`);
+    if (!response.ok) {
+      setMessage(`Add rule failed: ${response.status}`);
+      return;
+    }
+    const created = await response.json();
+    setRules((current) => [...current, created]);
+    setSelectedRuleId(created.id);
+    setAddingRule(false);
+    setMessage(`Added ${name}.`);
   }
 
   async function generate() {
@@ -266,6 +258,7 @@ export function DesignerShell({
           <RuleList
             rules={rules}
             selectedId={selectedRuleId}
+            onAdd={() => setAddingRule(true)}
             onSelect={(rule) => {
               setSelectedRuleId(rule.id);
               setSelectedIndex(null);
@@ -286,6 +279,11 @@ export function DesignerShell({
               hits={hits}
               message={message}
               onSelect={(index) => {
+                if (selectedIndex === index) {
+                  setSelectedIndex(null);
+                  setDraft(null);
+                  return;
+                }
                 setSelectedIndex(index);
                 setDraft(payload?.items[index] ?? null);
               }}
@@ -300,11 +298,12 @@ export function DesignerShell({
               onGenerate={generate}
               onDelete={deleteItem}
               onAddItem={addItem}
-              onCopyRule={copyRule}
-              otherRules={otherRules}
             />
           ) : selectedRule ? (
             <RuleSummary rule={selectedRule} />
+          ) : null}
+          {addingRule ? (
+            <AddRuleDialog onCancel={() => setAddingRule(false)} onCreate={createRule} />
           ) : null}
           <ClockPane
             label={day.label}

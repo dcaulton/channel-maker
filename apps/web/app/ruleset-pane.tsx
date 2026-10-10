@@ -1,12 +1,5 @@
 import type { AssetHit, WindowedItem } from '@channel-maker/contracts';
 
-export type CopyableRule = {
-  id: string;
-  name: string;
-  kind: string;
-  rulesetName: string;
-};
-
 function daysLabel(days: WindowedItem['days']): string {
   return days === 'daily' ? 'daily' : days.join(',');
 }
@@ -18,7 +11,6 @@ export function RulesetPane({
   draft,
   hits,
   message,
-  otherRules,
   onSelect,
   onDraft,
   onSearch,
@@ -27,7 +19,6 @@ export function RulesetPane({
   onGenerate,
   onDelete,
   onAddItem,
-  onCopyRule,
 }: {
   name: string | null;
   items: WindowedItem[];
@@ -35,7 +26,6 @@ export function RulesetPane({
   draft: WindowedItem | null;
   hits: AssetHit[];
   message: string | null;
-  otherRules: CopyableRule[];
   onSelect: (index: number) => void;
   onDraft: (item: WindowedItem) => void;
   onSearch: (q: string) => void;
@@ -44,12 +34,11 @@ export function RulesetPane({
   onGenerate: () => void;
   onDelete: (index: number) => void;
   onAddItem: (mode: WindowedItem['mode']) => void;
-  onCopyRule: (ruleId: string) => void;
 }) {
   return (
     <section className="card" aria-label="Ruleset">
       <header className="pane-head">
-        <h2>Ruleset{name ? ` · ${name}` : ''}</h2>
+        <h2>windowed sources designer{name ? `: ${name}` : ''}</h2>
         <label className="add">
           Add
           <select
@@ -58,20 +47,13 @@ export function RulesetPane({
               const value = event.target.value;
               if (value.startsWith('item:')) {
                 onAddItem(value.slice(5) as WindowedItem['mode']);
-              } else if (value.startsWith('rule:')) {
-                onCopyRule(value.slice(5));
               }
             }}
           >
             <option value="">choose</option>
-            <option value="item:episodes">new episodes item</option>
-            <option value="item:live">new live item</option>
-            <option value="item:slate">new slate item</option>
-            {otherRules.map((rule) => (
-              <option key={rule.id} value={`rule:${rule.id}`}>
-                {rule.name} · {rule.kind}
-              </option>
-            ))}
+            <option value="item:episodes">episodes</option>
+            <option value="item:live">live</option>
+            <option value="item:slate">slate</option>
           </select>
         </label>
       </header>

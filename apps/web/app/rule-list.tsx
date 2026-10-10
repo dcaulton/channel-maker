@@ -4,14 +4,19 @@ export function RuleList({
   rules,
   selectedId,
   onSelect,
+  onAdd,
 }: {
   rules: Rule[];
   selectedId: string | null;
   onSelect: (rule: Rule) => void;
+  onAdd: () => void;
 }) {
   return (
     <section className="card" aria-label="Rules">
-      <h2>Rules</h2>
+      <header className="pane-head">
+        <h2>Rules</h2>
+        <button type="button" onClick={onAdd}>Add rule</button>
+      </header>
       {rules.length === 0 ? <p className="note">No rules on this channel.</p> : null}
       <ul className="channel-list">
         {rules.map((rule) => {

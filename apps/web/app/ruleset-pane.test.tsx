@@ -26,7 +26,6 @@ describe('RulesetPane', () => {
         draft={items[0]!}
         hits={[]}
         message={null}
-        otherRules={[{ id: 'r1', name: 'Locals', kind: 'rotate-tv-streams', rulesetName: 'wls' }]}
         onSelect={() => undefined}
         onDraft={() => undefined}
         onSearch={() => undefined}
@@ -35,12 +34,12 @@ describe('RulesetPane', () => {
         onGenerate={() => undefined}
         onDelete={() => undefined}
         onAddItem={() => undefined}
-        onCopyRule={() => undefined}
       />,
     );
     expect(html).toContain('Delete');
     expect(html).toContain('No programming');
-    expect(html).toContain('new episodes item');
-    expect(html).toContain('Locals · rotate-tv-streams');
+    expect(html).toContain('windowed sources designer: philosophy-prime');
+    expect(html).toContain('episodes');
+    expect(html).not.toContain('rotate-tv-streams');
   });
 });

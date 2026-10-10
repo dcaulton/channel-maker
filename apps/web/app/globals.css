@@ -114,3 +114,6 @@ body {
 .slot { display: flex; align-items: flex-start; gap: 8px; }
 .slot-main { flex: 1; text-align: left; background: transparent; color: inherit; border: 0; padding: 0; }
 .danger { color: #f0a0a0; background: transparent; border: 0; }
+
+.dialog { display: grid; gap: 8px; margin-top: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
+.pane-head button { background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
