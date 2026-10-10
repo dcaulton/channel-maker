@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -45,6 +46,17 @@ export class MediaAssetsController {
   @ApiOkResponse({ description: 'List of media assets' })
   findAll() {
     return this.mediaAssetsService.findAll();
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Paged title search' })
+  @ApiOkResponse({ description: 'A page of assets' })
+  search(
+    @Query('q') q = '',
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+  ) {
+    return this.mediaAssetsService.search(q, Number(page), Number(pageSize));
   }
 
   @Get(':id')

@@ -78,6 +78,28 @@ export class MediaAssetsService {
     });
   }
 
+  async search(q = '', page = 1, pageSize = 20) {
+    const take = Math.min(
+      Math.max(Number.isFinite(pageSize) ? pageSize : 20, 1),
+      50,
+    );
+    const current = Math.max(Number.isFinite(page) ? page : 1, 1);
+    const where = q.trim()
+      ? { title: { contains: q.trim(), mode: 'insensitive' as const } }
+      : {};
+    const [items, total] = await Promise.all([
+      this.prisma.mediaAsset.findMany({
+        where,
+        orderBy: { title: 'asc' },
+        skip: (current - 1) * take,
+        take,
+        include: assetInclude,
+      }),
+      this.prisma.mediaAsset.count({ where }),
+    ]);
+    return { items, page: current, pageSize: take, total };
+  }
+
   async findOne(id: string) {
     const asset = await this.prisma.mediaAsset.findUnique({
       where: { id },

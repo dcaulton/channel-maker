@@ -125,6 +125,11 @@ export class ChannelsService {
     });
   }
 
+  async fillWindow(channelId: string, from?: Date, to?: Date) {
+    await this.findOne(channelId);
+    return this.scheduler.fillChannel({ channelId, from, to });
+  }
+
   async getPlaylistM3u(
     channelId: string,
     from: Date,

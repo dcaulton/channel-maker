@@ -17,8 +17,8 @@ export function ClockPane({
   onSelect: (slot: ScheduleSlot) => void;
 }) {
   return (
-    <section className="card" aria-label="Clock">
-      <h2>Clock · {label}</h2>
+    <section className="card" aria-label="Log">
+      <h2>Log · {label}</h2>
       {loading ? <p className="note">Loading today's log…</p> : null}
       {error ? <p className="note">{error}</p> : null}
       {!loading && !error && slots.length === 0 ? (

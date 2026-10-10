@@ -88,6 +88,23 @@ export class ChannelsController {
     return this.channelsService.remove(id);
   }
 
+  @Post(':id/fill')
+  @ApiOperation({ summary: 'Generate engine slots from the active ruleset' })
+  @ApiOkResponse({ description: 'Window filled' })
+  fill(@Param('id') id: string, @Body() body: { from?: string; to?: string }) {
+    const from = body?.from ? new Date(body.from) : undefined;
+    const to = body?.to ? new Date(body.to) : undefined;
+    if (
+      (from && Number.isNaN(from.getTime())) ||
+      (to && Number.isNaN(to.getTime()))
+    ) {
+      throw new BadRequestException(
+        'from and to must be valid ISO date strings',
+      );
+    }
+    return this.channelsService.fillWindow(id, from, to);
+  }
+
   @Get(':id/now')
   @ApiOperation({ summary: 'Get the slot currently playing on this channel' })
   @ApiOkResponse({

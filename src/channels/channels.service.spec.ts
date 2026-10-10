@@ -18,7 +18,7 @@ describe('ChannelsService', () => {
       delete: jest.Mock;
     };
   };
-  let scheduler: { ensureCoverage: jest.Mock };
+  let scheduler: { ensureCoverage: jest.Mock; fillChannel: jest.Mock };
 
   beforeEach(() => {
     prisma = {
@@ -36,6 +36,7 @@ describe('ChannelsService', () => {
     };
     scheduler = {
       ensureCoverage: jest.fn().mockResolvedValue(undefined),
+      fillChannel: jest.fn().mockResolvedValue({ channelId: '1', written: 2 }),
     };
     service = new ChannelsService(
       prisma as unknown as PrismaService,
@@ -204,6 +205,20 @@ describe('ChannelsService', () => {
       prisma.scheduleSlot.findFirst.mockResolvedValue(null);
 
       await expect(service.findNow(channelId)).resolves.toBeNull();
+    });
+  });
+
+  it('fills a window through the scheduler', async () => {
+    prisma.channel.findUnique.mockResolvedValue({ id: '1', slots: [] });
+    const from = new Date('2026-10-10T05:00:00.000Z');
+    const to = new Date('2026-10-11T05:00:00.000Z');
+
+    await service.fillWindow('1', from, to);
+
+    expect(scheduler.fillChannel).toHaveBeenCalledWith({
+      channelId: '1',
+      from,
+      to,
     });
   });
 });

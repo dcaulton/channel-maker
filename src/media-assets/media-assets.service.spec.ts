@@ -11,6 +11,7 @@ describe('MediaAssetsService', () => {
       findUnique: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
+      count: jest.Mock;
     };
   };
 
@@ -22,6 +23,7 @@ describe('MediaAssetsService', () => {
         findUnique: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
+        count: jest.fn(),
       },
     };
     service = new MediaAssetsService(prisma as unknown as PrismaService);
@@ -54,6 +56,23 @@ describe('MediaAssetsService', () => {
     prisma.mediaAsset.findUnique.mockResolvedValue(null);
     await expect(service.findOne('missing')).rejects.toBeInstanceOf(
       NotFoundException,
+    );
+  });
+
+  it('pages a title search', async () => {
+    prisma.mediaAsset.findMany.mockResolvedValue([
+      { id: 'a', title: 'Justice 1' },
+    ]);
+    prisma.mediaAsset.count.mockResolvedValue(41);
+
+    await expect(service.search('justice', 2, 20)).resolves.toEqual({
+      items: [{ id: 'a', title: 'Justice 1' }],
+      page: 2,
+      pageSize: 20,
+      total: 41,
+    });
+    expect(prisma.mediaAsset.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 20, take: 20 }),
     );
   });
 });
