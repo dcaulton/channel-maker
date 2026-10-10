@@ -1,8 +1,9 @@
-import type { RedisOptions } from 'ioredis';
+import type { ConnectionOptions } from 'bullmq';
 
 // Options, not a live client. BullMQ creates the connections and can close
 // them. A client we construct here is ours to quit, and Jest will wait on it.
-export function redisConnection(): RedisOptions {
+// Use BullMQ's options type: ioredis RedisOptions has no `url` field.
+export function redisConnection(): ConnectionOptions {
   return {
     url: process.env.REDIS_URL ?? 'redis://127.0.0.1:6379',
     maxRetriesPerRequest: null,
