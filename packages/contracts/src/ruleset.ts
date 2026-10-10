@@ -48,3 +48,13 @@ export const bindingListSchema = z.array(bindingSchema);
 export type WindowedItem = z.infer<typeof windowedItemSchema>;
 export type WindowedPayload = z.infer<typeof windowedPayloadSchema>;
 export type RulesetDetail = z.infer<typeof rulesetDetailSchema>;
+
+export const rotatePayloadSchema = z.object({
+  streamTitles: z.array(z.string()),
+  slotDurationSec: z.number(),
+});
+
+export type RotatePayload = z.infer<typeof rotatePayloadSchema>;
+export type Rule = z.infer<typeof ruleSchema>;
+
+export const PLANNED_KINDS = ['windowed-sources', 'rotate-tv-streams'] as const;

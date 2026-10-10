@@ -40,7 +40,7 @@ export function ClockPane({
                 <strong>{slot.title}</strong>
                 <span>
                   {playable
-                    ? (slot.mediaAsset?.work?.title ?? slot.mediaAsset?.title)
+                    ? slot.mediaAsset?.sourceUrl
                     : 'No work yet. The title is still undecided.'}
                 </span>
               </button>

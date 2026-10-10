@@ -9,12 +9,16 @@ import {
   windowedPayloadSchema,
   type AssetHit,
   type ChannelListItem,
+  type Rule,
   type ScheduleSlot,
   type WindowedItem,
   type WindowedPayload,
 } from '@channel-maker/contracts';
 import { chicagoDayRange } from './chicago-day';
 import { ClockPane } from './clock-pane';
+import { PreviewPane } from './preview-pane';
+import { RuleList } from './rule-list';
+import { RuleSummary } from './rule-summary';
 import { RulesetPane } from './ruleset-pane';
 
 async function readJson(response: Response) {
@@ -34,8 +38,8 @@ export function DesignerShell({
   const [slotError, setSlotError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  const [rulesetName, setRulesetName] = useState<string | null>(null);
-  const [ruleId, setRuleId] = useState<string | null>(null);
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const [payload, setPayload] = useState<WindowedPayload | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [draft, setDraft] = useState<WindowedItem | null>(null);
@@ -43,6 +47,7 @@ export function DesignerShell({
   const [message, setMessage] = useState<string | null>(null);
   const selected = channels.find((channel) => channel.id === selectedId) ?? null;
   const selectedSlot = slots.find((slot) => slot.id === selectedSlotId) ?? null;
+  const selectedRule = rules.find((rule) => rule.id === selectedRuleId) ?? null;
   const day = chicagoDayRange();
 
   async function loadLog(channelId: string, signal?: AbortSignal) {
@@ -75,8 +80,8 @@ export function DesignerShell({
           (item) => item.channelId === selectedId && item.isActive,
         );
         if (!binding) {
-          setRulesetName(null);
-          setRuleId(null);
+          setRules([]);
+          setSelectedRuleId(null);
           setPayload(null);
           return;
         }
@@ -87,10 +92,13 @@ export function DesignerShell({
             }),
           ),
         );
-        const rule = detail.rules.find((item) => item.kind === 'windowed-sources');
-        setRulesetName(detail.name);
-        setRuleId(rule?.id ?? null);
-        setPayload(rule ? windowedPayloadSchema.parse(rule.payload) : null);
+        setRules(detail.rules);
+        const windowed = detail.rules.find((rule) => rule.kind === 'windowed-sources');
+        const first = windowed ?? detail.rules[0] ?? null;
+        setSelectedRuleId(first?.id ?? null);
+        setPayload(
+          windowed ? windowedPayloadSchema.parse(windowed.payload) : null,
+        );
       })
       .catch((cause: unknown) => {
         if (cause instanceof DOMException && cause.name === 'AbortError') return;
@@ -103,12 +111,12 @@ export function DesignerShell({
   }, [selectedId]);
 
   async function saveItem() {
-    if (!ruleId || !payload || selectedIndex === null || !draft) return;
+    if (!selectedRule || !payload || selectedIndex === null || !draft) return;
     const items = payload.items.map((item, index) =>
       index === selectedIndex ? draft : item,
     );
     const next = { ...payload, items };
-    const response = await fetch(`/nest/rules/${ruleId}`, {
+    const response = await fetch(`/nest/rules/${selectedRule.id}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ payload: next }),
@@ -178,27 +186,45 @@ export function DesignerShell({
           </ul>
         </section>
         <div className="stack">
-          <RulesetPane
-            name={rulesetName}
-            items={payload?.items ?? []}
-            selectedIndex={selectedIndex}
-            draft={draft}
-            hits={hits}
-            message={message}
-            onSelect={(index) => {
-              setSelectedIndex(index);
-              setDraft(payload?.items[index] ?? null);
+          <RuleList
+            rules={rules}
+            selectedId={selectedRuleId}
+            onSelect={(rule) => {
+              setSelectedRuleId(rule.id);
+              setSelectedIndex(null);
+              setDraft(null);
+              setPayload(
+                rule.kind === 'windowed-sources'
+                  ? windowedPayloadSchema.parse(rule.payload)
+                  : null,
+              );
             }}
-            onDraft={setDraft}
-            onSearch={search}
-            onPick={(hit) => {
-              if (!draft) return;
-              const series = hit.work?.seriesTitle ?? hit.title;
-              setDraft({ ...draft, title: series, seriesTitle: series });
-            }}
-            onSave={saveItem}
-            onGenerate={generate}
           />
+          {selectedRule?.kind === 'windowed-sources' ? (
+            <RulesetPane
+              name={selectedRule.name}
+              items={payload?.items ?? []}
+              selectedIndex={selectedIndex}
+              draft={draft}
+              hits={hits}
+              message={message}
+              onSelect={(index) => {
+                setSelectedIndex(index);
+                setDraft(payload?.items[index] ?? null);
+              }}
+              onDraft={setDraft}
+              onSearch={search}
+              onPick={(hit) => {
+                if (!draft) return;
+                const series = hit.work?.seriesTitle ?? hit.title;
+                setDraft({ ...draft, title: series, seriesTitle: series });
+              }}
+              onSave={saveItem}
+              onGenerate={generate}
+            />
+          ) : selectedRule ? (
+            <RuleSummary rule={selectedRule} />
+          ) : null}
           <ClockPane
             label={day.label}
             slots={slots}
@@ -208,26 +234,15 @@ export function DesignerShell({
             onSelect={(slot) => setSelectedSlotId(slot.id)}
           />
         </div>
-        <section className="card" aria-label="Preview">
-          <h2>Preview</h2>
-          {selectedSlot ? (
-            <>
-              <p className="preview">{selectedSlot.title}</p>
-              <p className="note">
-                {selectedSlot.mediaAsset?.sourceUrl
-                  ? (selectedSlot.mediaAsset.work?.title ?? selectedSlot.mediaAsset.title)
-                  : 'Theme slot. No playable URL yet.'}
-              </p>
-            </>
-          ) : selected ? (
-            <>
-              <p className="preview">{selected.name}</p>
-              <p className="note">Select a slot to inspect it.</p>
-            </>
-          ) : (
-            <p className="preview">Nothing selected</p>
-          )}
-        </section>
+        <PreviewPane
+          title={selectedSlot?.title ?? selected?.name ?? null}
+          sourceUrl={selectedSlot?.mediaAsset?.sourceUrl ?? null}
+          fallback={
+            selected
+              ? 'Select a log row to play it.'
+              : 'Select a channel.'
+          }
+        />
       </main>
     </>
   );
