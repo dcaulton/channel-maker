@@ -19,6 +19,7 @@ export function RulesetPane({
   onGenerate,
   onDelete,
   onAddItem,
+  onReorder,
 }: {
   name: string | null;
   items: WindowedItem[];
@@ -34,7 +35,13 @@ export function RulesetPane({
   onGenerate: () => void;
   onDelete: (index: number) => void;
   onAddItem: (mode: WindowedItem['mode']) => void;
+  onReorder: (from: number, to: number) => void;
 }) {
+  const order = items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => a.item.start.localeCompare(b.item.start) || a.index - b.index);
+  const startCounts = new Map<string, number>();
+  for (const item of items) startCounts.set(item.start, (startCounts.get(item.start) ?? 0) + 1);
   return (
     <section className="card" aria-label="Ruleset">
       <header className="pane-head">
@@ -59,18 +66,32 @@ export function RulesetPane({
       </header>
       {items.length === 0 ? <p className="note">No windowed-sources items.</p> : null}
       <ol className="log">
-        {items.map((item, index) => {
+        {order.map(({ item, index }) => {
           const open = index === selectedIndex;
           const shown = open && draft ? draft : item;
+          const clash = (startCounts.get(item.start) ?? 0) > 1;
           return (
-            <li key={`${item.start}-${item.title}-${index}`}>
-              <div className={open ? 'slot selected' : 'slot'}>
+            <li
+              key={`${item.start}-${item.title}-${index}`}
+              draggable
+              onDragStart={(event) => event.dataTransfer.setData('text/plain', String(index))}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                const from = Number(event.dataTransfer.getData('text/plain'));
+                if (Number.isInteger(from) && from !== index) onReorder(from, index);
+              }}
+            >
+              <div className={open ? 'slot selected' : clash ? 'slot clash' : 'slot'}>
                 <button type="button" className="slot-main" onClick={() => onSelect(index)}>
                   <span className="when">
                     {shown.start}–{shown.end} · {shown.mode} · {daysLabel(shown.days)}
                   </span>
                   <strong>{shown.title}</strong>
                   <span>{shown.seriesTitle ?? shown.seriesTitles?.join(', ') ?? 'no series'}</span>
+                  {clash ? (
+                    <span className="tip">Same start time as another item. The planner may overlap these.</span>
+                  ) : null}
                 </button>
                 <button
                   type="button"

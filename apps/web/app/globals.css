@@ -117,3 +117,21 @@ body {
 
 .dialog { display: grid; gap: 8px; margin-top: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
 .pane-head button { background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+
+.slot.clash { border-color: #c45b5b; box-shadow: inset 3px 0 0 #c45b5b; }
+.slot-main { position: relative; }
+.tip {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 2;
+  max-width: 240px;
+  padding: 6px 8px;
+  background: #2a1c1c;
+  color: #f0d0d0;
+  border: 1px solid #c45b5b;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.slot-main:hover .tip { display: block; }

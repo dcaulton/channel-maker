@@ -34,6 +34,7 @@ describe('RulesetPane', () => {
         onGenerate={() => undefined}
         onDelete={() => undefined}
         onAddItem={() => undefined}
+        onReorder={() => undefined}
       />,
     );
     expect(html).toContain('Delete');

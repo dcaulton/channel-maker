@@ -156,6 +156,17 @@ export function DesignerShell({
     await persist({ ...payload, items }, 'Item deleted. Generate to rewrite the log.');
   }
 
+  async function reorder(from: number, to: number) {
+    if (!payload) return;
+    const items = payload.items.map((item) => ({ ...item }));
+    const a = items[from];
+    const b = items[to];
+    if (!a || !b) return;
+    [a.start, b.start] = [b.start, a.start];
+    [a.end, b.end] = [b.end, a.end];
+    await persist({ ...payload, items }, 'Start times swapped. Generate to rewrite the log.');
+  }
+
   function addItem(mode: WindowedItem['mode']) {
     if (!payload) return;
     const item: WindowedItem = {
@@ -298,6 +309,7 @@ export function DesignerShell({
               onGenerate={generate}
               onDelete={deleteItem}
               onAddItem={addItem}
+              onReorder={reorder}
             />
           ) : selectedRule ? (
             <RuleSummary rule={selectedRule} />
