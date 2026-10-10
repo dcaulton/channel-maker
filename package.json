@@ -30,7 +30,8 @@
     "prepare": "husky",
     "dev:web": "pnpm --filter @channel-maker/web dev",
     "test:web": "pnpm --filter @channel-maker/web test",
-    "test:web:cov": "pnpm --filter @channel-maker/web test:cov"
+    "test:web:cov": "pnpm --filter @channel-maker/web test:cov",
+    "test:contracts": "pnpm --filter @channel-maker/contracts test"
   },
   "lint-staged": {
     "*.{ts,js,mjs}": [

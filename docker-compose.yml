@@ -64,6 +64,9 @@ services:
       - web_app_node_modules:/app/apps/web/node_modules
     environment:
       NEXT_TELEMETRY_DISABLED: '1'
+      API_BASE_URL: http://host.docker.internal:3000
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
 
 volumes:
   postgres_data:

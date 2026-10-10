@@ -126,3 +126,14 @@ pnpm test:web
 ```
 
 `docker compose --profile ui up web` is the container path. Postgres and Redis do not need that profile. This step does not proxy to Nest and does not share DTOs.
+
+## Contracts
+
+`packages/contracts` is the shared read schema. Nest still validates writes with class-validator. The designer parses `GET /channels` with the Zod schema in that package.
+
+`apps/web` fetches on the server, then a client component handles the click. Set `API_BASE_URL` if Nest is not on `http://127.0.0.1:3000`.
+
+```bash
+pnpm test:contracts
+pnpm dev:web
+```

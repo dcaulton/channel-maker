@@ -37,6 +37,9 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      - name: Contract tests
+        run: pnpm test:contracts
+
       - name: Designer tests
         run: pnpm test:web
 

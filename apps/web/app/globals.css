@@ -66,3 +66,18 @@ body {
 @media (max-width: 960px) {
   .board { grid-template-columns: 1fr; }
 }
+
+.channel-list { list-style: none; margin: 0; padding: 0; }
+.channel {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 6px;
+  color: inherit;
+}
+.channel strong { display: block; font-family: var(--serif); font-size: 18px; }
+.channel span { color: var(--dim); font-family: var(--mono); font-size: 12px; }
+.channel.selected { border-color: var(--line); box-shadow: inset 3px 0 0 var(--air); }

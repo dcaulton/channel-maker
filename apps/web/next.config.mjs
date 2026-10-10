@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // No rewrites yet. Nest stays a separate process on port 3000.
+  transpilePackages: ['@channel-maker/contracts'],
 };
 
 export default nextConfig;
