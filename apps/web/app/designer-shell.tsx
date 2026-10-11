@@ -8,12 +8,14 @@ import {
   rulesetDetailSchema,
   scheduleSchema,
   windowedPayloadSchema,
+  workPageSchema,
   type AssetHit,
   type ChannelListItem,
   type Rule,
   type ScheduleSlot,
   type WindowedItem,
   type WindowedPayload,
+  type WorkHit,
 } from '@channel-maker/contracts';
 import { chicagoDayRange } from './chicago-day';
 import { ChannelList } from './channel-list';
@@ -66,6 +68,8 @@ export function DesignerShell({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [draft, setDraft] = useState<WindowedItem | null>(null);
   const [hits, setHits] = useState<AssetHit[]>([]);
+  const [works, setWorks] = useState<WorkHit[]>([]);
+  const [browse, setBrowse] = useState<'works' | 'assets'>('works');
   const [message, setMessage] = useState<string | null>(null);
   const [addingRule, setAddingRule] = useState(false);
   const [rulesetId, setRulesetId] = useState<string | null>(null);
@@ -309,13 +313,17 @@ export function DesignerShell({
   async function search(q: string) {
     if (q.trim().length < 2) {
       setHits([]);
+      setWorks([]);
       return;
     }
+    const path = browse === 'works' ? '/nest/works/search' : '/nest/media-assets/search';
     const response = await fetch(
-      `/nest/media-assets/search?q=${encodeURIComponent(q)}&page=1&pageSize=20`,
+      `${path}?q=${encodeURIComponent(q)}&page=1&pageSize=20`,
     );
     if (!response.ok) return;
-    setHits(assetPageSchema.parse(await response.json()).items);
+    const body = await response.json();
+    if (browse === 'works') setWorks(workPageSchema.parse(body).items);
+    else setHits(assetPageSchema.parse(body).items);
   }
 
   return (
@@ -358,6 +366,8 @@ export function DesignerShell({
               selectedIndex={selectedIndex}
               draft={draft}
               hits={hits}
+              works={works}
+              browse={browse}
               message={message}
               onSelect={(index) => {
                 if (selectedIndex === index) {
@@ -370,9 +380,15 @@ export function DesignerShell({
               }}
               onDraft={setDraft}
               onSearch={search}
+              onBrowse={setBrowse}
               onPick={(hit) => {
                 if (!draft) return;
                 const series = hit.work?.seriesTitle ?? hit.title;
+                setDraft({ ...draft, title: series, seriesTitle: series });
+              }}
+              onPickWork={(work) => {
+                if (!draft) return;
+                const series = work.seriesTitle ?? work.title;
                 setDraft({ ...draft, title: series, seriesTitle: series });
               }}
               onSave={saveItem}

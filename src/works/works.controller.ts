@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -38,6 +39,16 @@ export class WorksController {
   @ApiOkResponse({ description: 'List of works' })
   findAll() {
     return this.worksService.findAll();
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Paged title or series search' })
+  search(
+    @Query('q') q = '',
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+  ) {
+    return this.worksService.search(q, Number(page), Number(pageSize));
   }
 
   @Get(':id')

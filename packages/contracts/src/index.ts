@@ -25,3 +25,9 @@ export {
   type AssetHit,
   type AssetPage,
 } from './asset-search';
+export {
+  workHitSchema,
+  workPageSchema,
+  type WorkHit,
+  type WorkPage,
+} from './work-search';

@@ -25,11 +25,15 @@ describe('RulesetPane', () => {
         selectedIndex={0}
         draft={items[0]!}
         hits={[]}
+        works={[]}
+        browse="works"
         message={null}
         onSelect={() => undefined}
         onDraft={() => undefined}
         onSearch={() => undefined}
         onPick={() => undefined}
+        onBrowse={() => undefined}
+        onPickWork={() => undefined}
         onSave={() => undefined}
         onGenerate={() => undefined}
         onDelete={() => undefined}

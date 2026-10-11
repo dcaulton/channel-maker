@@ -1,4 +1,4 @@
-import type { AssetHit, WindowedItem } from '@channel-maker/contracts';
+import type { AssetHit, WindowedItem, WorkHit } from '@channel-maker/contracts';
 
 function daysLabel(days: WindowedItem['days']): string {
   return days === 'daily' ? 'daily' : days.join(',');
@@ -10,11 +10,15 @@ export function RulesetPane({
   selectedIndex,
   draft,
   hits,
+  works,
+  browse,
   message,
   onSelect,
   onDraft,
   onSearch,
   onPick,
+  onBrowse,
+  onPickWork,
   onSave,
   onGenerate,
   onDelete,
@@ -26,11 +30,15 @@ export function RulesetPane({
   selectedIndex: number | null;
   draft: WindowedItem | null;
   hits: AssetHit[];
+  works: WorkHit[];
+  browse: 'works' | 'assets';
   message: string | null;
   onSelect: (index: number) => void;
   onDraft: (item: WindowedItem) => void;
   onSearch: (q: string) => void;
   onPick: (hit: AssetHit) => void;
+  onBrowse: (mode: 'works' | 'assets') => void;
+  onPickWork: (work: WorkHit) => void;
   onSave: () => void;
   onGenerate: () => void;
   onDelete: (index: number) => void;
@@ -189,19 +197,36 @@ export function RulesetPane({
                       onChange={(e) => onDraft({ ...draft, slateTitle: e.target.value })}
                     />
                   </label>
+                  <div className="actions">
+                    <button type="button" onClick={() => onBrowse('works')}>Works</button>
+                    <button type="button" onClick={() => onBrowse('assets')}>Media assets</button>
+                  </div>
                   <label>
-                    Find a title
+                    {browse === 'works' ? 'Find a work' : 'Find an asset'}
                     <input placeholder="justice" onChange={(e) => onSearch(e.target.value)} />
                   </label>
-                  <ul className="hits">
-                    {hits.map((hit) => (
-                      <li key={hit.id}>
-                        <button type="button" onClick={() => onPick(hit)}>
-                          {hit.work?.seriesTitle ?? hit.title}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                  {browse === 'works' ? (
+                    <ul className="hits">
+                      {works.map((work) => (
+                        <li key={work.id}>
+                          <button type="button" onClick={() => onPickWork(work)}>
+                            {work.seriesTitle ?? work.title}
+                            {work.episode != null ? ` · E${work.episode}` : ''}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <ul className="hits">
+                      {hits.map((hit) => (
+                        <li key={hit.id}>
+                          <button type="button" onClick={() => onPick(hit)}>
+                            {hit.work?.seriesTitle ?? hit.title}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <div className="actions">
                     <button type="submit">Save item</button>
                     <button type="button" onClick={onGenerate}>Generate log</button>

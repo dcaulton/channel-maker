@@ -36,6 +36,38 @@ export class WorksService {
     });
   }
 
+  async search(q = '', page = 1, pageSize = 20) {
+    const take = Math.min(
+      Math.max(Number.isFinite(pageSize) ? pageSize : 20, 1),
+      50,
+    );
+    const current = Math.max(Number.isFinite(page) ? page : 1, 1);
+    const term = q.trim();
+    const where = term
+      ? {
+          OR: [
+            { title: { contains: term, mode: 'insensitive' as const } },
+            { seriesTitle: { contains: term, mode: 'insensitive' as const } },
+          ],
+        }
+      : {};
+    const [items, total] = await Promise.all([
+      this.prisma.work.findMany({
+        where,
+        orderBy: [
+          { seriesTitle: 'asc' },
+          { season: 'asc' },
+          { episode: 'asc' },
+        ],
+        skip: (current - 1) * take,
+        take,
+        include: { _count: { select: { assets: true } } },
+      }),
+      this.prisma.work.count({ where }),
+    ]);
+    return { items, page: current, pageSize: take, total };
+  }
+
   async findOne(id: string) {
     const work = await this.prisma.work.findUnique({
       where: { id },
