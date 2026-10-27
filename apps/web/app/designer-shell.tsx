@@ -148,14 +148,22 @@ export function DesignerShell({
   }
 
   useEffect(() => {
+    setRules([]);
+    setSelectedRuleId(null);
+    setPayload(null);
+    setRulesetId(null);
+    setSlots([]);
+    setSelectedSlotId(null);
+    setSelectedIndex(null);
+    setDraft(null);
+    setHits([]);
+    setWorks([]);
+    setMessage(null);
+    setAddingRule(false);
+    setSlotError(null);
     if (!selectedId) return;
     const controller = new AbortController();
     setLoading(true);
-    setSlotError(null);
-    setSelectedSlotId(null);
-    setMessage(null);
-    setSelectedIndex(null);
-    setDraft(null);
 
     Promise.all([
       loadLog(selectedId, controller.signal),
@@ -268,8 +276,39 @@ export function DesignerShell({
     setMessage('New item is local until you save it.');
   }
 
+  async function ensureRuleset(): Promise<string | null> {
+    if (rulesetId) return rulesetId;
+    if (!selected) {
+      setMessage('Select a channel first.');
+      return null;
+    }
+    const slug = `${selected.slug}-rules`;
+    const created = await fetch('/nest/rulesets', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: `${selected.name} rules`, slug }),
+    });
+    if (!created.ok) {
+      setMessage(`Could not create a ruleset: ${created.status}`);
+      return null;
+    }
+    const ruleset = await created.json();
+    const binding = await fetch('/nest/channel-rulesets', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ channelId: selected.id, rulesetId: ruleset.id }),
+    });
+    if (!binding.ok) {
+      setMessage(`Could not bind the ruleset: ${binding.status}`);
+      return null;
+    }
+    setRulesetId(ruleset.id);
+    return ruleset.id;
+  }
+
   async function createRule(name: string, kind: 'windowed-sources' | 'rotate-tv-streams') {
-    if (!rulesetId) return;
+    const targetRulesetId = await ensureRuleset();
+    if (!targetRulesetId) return;
     const payload =
       kind === 'windowed-sources'
         ? {
@@ -281,7 +320,7 @@ export function DesignerShell({
     const response = await fetch('/nest/rules', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ rulesetId, name, kind, payload }),
+      body: JSON.stringify({ rulesetId: targetRulesetId, name, kind, payload }),
     });
     if (!response.ok) {
       setMessage(`Add rule failed: ${response.status}`);
